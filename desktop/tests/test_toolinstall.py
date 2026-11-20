@@ -108,3 +108,10 @@ def test_shipped_manifest_is_sane():
         assert s["url"].startswith("https://github.com/") and len(s["sha256"]) == 64 and s["exe"].endswith(".exe")
     for name in ("stm32cube", "wlink"):
         assert "url" not in m[name] and m[name]["page"].startswith("https://")
+
+
+def test_build_script_bundles_every_data_file_the_app_reads_at_runtime():
+    """Regression: the installed app crashed on the Tools page because tools_manifest.json was not bundled."""
+    src = (Path(__file__).resolve().parents[1] / "build.py").read_text()
+    for name in ("boards.json", "tools_manifest.json"):
+        assert name in src, f"build.py must --add-data {name}"

@@ -58,6 +58,7 @@ def main() -> int:
         "--icon", str(HERE / "assets" / "icon.ico"), "--distpath", str(HERE / "dist"), "--workpath", str(HERE / "build"), "--specpath", str(HERE / "build"),
         "--paths", str(HERE),
         "--add-data", f"{ROOT / 'shared' / 'boards.json'}{SEP}.",
+        "--add-data", f"{HERE / 'tools_manifest.json'}{SEP}.",
         "--collect-all", "esptool", "--collect-submodules", "serial.tools",
         "--hidden-import", "serial.tools.list_ports_windows", "--hidden-import", "app.ui.app",
     ]

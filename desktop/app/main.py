@@ -70,7 +70,7 @@ def run_headless(agent) -> int:
     return 0
 
 
-def selftest() -> int:
+def _selftest_body() -> int:
     """Start the real UI offscreen, visit every page, and report timings as JSON (used by CI on the installed exe)."""
     import json
     import os
@@ -148,6 +148,26 @@ def selftest() -> int:
             json.dump(result, f)
     print(json.dumps(result), flush=True)
     return 0
+
+
+def selftest() -> int:
+    """Run the self-test; on any failure write the traceback next to the result file and exit 1 (never block on a dialog)."""
+    import os
+    import traceback
+
+    try:
+        return _selftest_body()
+    except BaseException:
+        tb = traceback.format_exc()
+        out = os.environ.get("MCUB_SELFTEST_OUT")
+        if out:
+            try:
+                with open(out + ".error", "w", encoding="utf-8") as f:
+                    f.write(tb)
+            except OSError:
+                pass
+        print(tb, flush=True)
+        return 1
 
 
 def main(argv: list[str] | None = None) -> int:

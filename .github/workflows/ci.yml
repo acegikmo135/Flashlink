@@ -73,6 +73,7 @@ jobs:
           $done = $r.WaitForExit(90000)
           "wall clock: $([int]$sw.ElapsedMilliseconds) ms"
           if (Test-Path "$env:MCUB_SELFTEST_OUT.stages") { "--- stages ---"; Get-Content "$env:MCUB_SELFTEST_OUT.stages" }
+          if (Test-Path "$env:MCUB_SELFTEST_OUT.error") { "--- error ---"; Get-Content "$env:MCUB_SELFTEST_OUT.error" }
           if (-not $done) { $r.Kill(); throw "selftest hung (see stages above)" }
           "exit code: $($r.ExitCode)"
           if ($r.ExitCode -ne 0 -or -not (Test-Path $env:MCUB_SELFTEST_OUT)) { throw "selftest failed" }
