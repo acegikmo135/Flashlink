@@ -25,11 +25,12 @@ def test_signup_requires_invite(stack):
     from conftest import Web
 
     w = Web()
-    st, page = w.post("/signup", email="x@example.com", password="correct-horse-battery", invite="wrong")
-    assert st == 403 and "Invalid invite" in page
+    st, r = w.post("/api/web/signup", email="x@example.com", password="correct-horse-battery", invite="wrong")
+    assert st == 403 and r["error"]["code"] == "INVALID_INVITE"
     # cross-site posts are refused
-    s, _, _ = http("POST", BASE + "/login", b"email=a@b.c&password=x", {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded"})
-    assert s == 400
+    st, r = w.call("POST", "/api/web/login", {"email": "a@b.c", "password": "x"}, same_origin=False) if False else (None, None)
+    s, _, _ = http("POST", BASE + "/api/web/login", b'{"email":"a@b.c","password":"x"}', {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/json"})
+    assert s == 403
 
 
 def test_mcp_lists_all_tools(stack):
@@ -230,13 +231,11 @@ def test_revoke_disconnects_agent(stack, tmp_path):
 
     r = AgentRunner(stack, tmp_path / "h2", "avr").start()
     try:
-        page = stack.web.get("/dashboard")[1]
-        import re
-
-        ids = re.findall(r'name="id" value="(agt_[^"]+)"', page)
+        _, ov = stack.web.get("/api/web/overview")
+        ids = [a["id"] for a in ov["agents"]]
         assert ids
         for i in ids:
-            stack.web.post("/dashboard/agents/revoke", id=i)
+            stack.web.post("/api/web/agents/revoke", id=i)
         r.wait(lambda: r.agent.state.connection in ("revoked", "unpaired", "pairing"), 20, "revocation")
         s, _, _ = http("GET", BASE + "/api/agent/me", None, {"Authorization": "Bearer mcb_agent_bogus"})
         assert s == 401

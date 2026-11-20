@@ -1,7 +1,8 @@
 import type { Env } from "./env";
 import { authenticateAgent, authenticateMcp } from "./auth/tokens";
 import { pairPoll, pairStart } from "./auth/pairing";
-import { handleWeb, revokeAgent } from "./auth/web";
+import { handleWebApi, revokeAgent } from "./auth/web";
+import { agentAccountApi } from "./auth/agent-account";
 import { verifyToken } from "./lib/crypto";
 import { bearer, errorJson, json } from "./lib/http";
 import { pruneRateLimits, rateLimit } from "./lib/ratelimit";
@@ -19,6 +20,25 @@ interface JobToken {
   aid?: string;
   exp: number;
   files: { size: number; sha256: string }[];
+}
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "same-origin",
+  "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+};
+
+/** Serve the single-page web app; unknown paths fall back to index.html (client-side routing). */
+async function serveApp(request: Request, env: Env): Promise<Response> {
+  let res = await env.ASSETS.fetch(request);
+  const wantsHtml = (request.headers.get("accept") ?? "").includes("text/html");
+  if (res.status === 404 && wantsHtml) res = await env.ASSETS.fetch(new Request(new URL("/index.html", request.url), request));
+  if (res.status === 404) return errorJson(404, "NOT_FOUND", "Not found.");
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
+  if ((out.headers.get("content-type") ?? "").includes("text/html")) out.headers.set("cache-control", "no-store");
+  return out;
 }
 
 const relayFor = (env: Env, t: JobToken) => env.TRANSFER_RELAY.get(env.TRANSFER_RELAY.idFromName(`${t.uid}:${t.jid}`));
@@ -56,6 +76,12 @@ export default {
         headers.set("x-user-id", auth.user_id);
         headers.set("x-agent-name", auth.name);
         return env.USER_HUB.get(env.USER_HUB.idFromName(auth.user_id)).fetch(new Request("https://hub/ws", { headers }));
+      }
+      if (path.startsWith("/api/agent/") && path !== "/api/agent/ws" && path !== "/api/agent/me" && path !== "/api/agent/revoke") {
+        const auth = await authenticateAgent(env, bearer(request));
+        if (!auth) return errorJson(401, "UNAUTHORIZED", "Invalid or revoked agent credential.");
+        const r = await agentAccountApi(request, env, auth, path);
+        if (r) return r;
       }
       if (path === "/api/agent/me" && request.method === "GET") {
         const auth = await authenticateAgent(env, bearer(request));
@@ -119,10 +145,12 @@ export default {
         return new Response(MANIFEST_HELPER_PY, { headers: { "content-type": "text/x-python; charset=utf-8", "cache-control": "public, max-age=300" } });
       }
 
-      // -------------------------------------------------------------- web pages
-      const web = await handleWeb(request, env, url);
-      if (web) return web;
-      return errorJson(404, "NOT_FOUND", "Not found.");
+      // ------------------------------------------------------------ web app + API
+      const api = await handleWebApi(request, env, url);
+      if (api) return api;
+      if (path.startsWith("/api/")) return errorJson(404, "NOT_FOUND", "Unknown API route.");
+      if (request.method !== "GET" && request.method !== "HEAD") return errorJson(405, "METHOD_NOT_ALLOWED", "Method not allowed.");
+      return await serveApp(request, env);
     } catch (e) {
       console.error("unhandled", e instanceof Error ? e.stack : e);
       return errorJson(500, "INTERNAL", "Internal error.");

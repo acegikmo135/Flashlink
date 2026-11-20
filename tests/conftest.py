@@ -38,26 +38,33 @@ def http(method, url, body=None, headers=None, timeout=60):
 
 
 class Web:
-    """Minimal browser stand-in: cookie jar + form posts with same-origin fetch metadata."""
+    """Minimal browser stand-in: cookie jar + same-origin JSON calls to /api/web/*."""
 
     def __init__(self):
         self.jar = cookiejar.CookieJar()
         self.op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
 
-    def post(self, path, **form):
-        req = urllib.request.Request(BASE + path, urllib.parse.urlencode(form).encode(), {"Sec-Fetch-Site": "same-origin", "Content-Type": "application/x-www-form-urlencoded"})
+    def call(self, method, path, body=None, same_origin=True):
+        headers = {"Content-Type": "application/json"}
+        if same_origin:
+            headers["Sec-Fetch-Site"] = "same-origin"
+        req = urllib.request.Request(BASE + path, json.dumps(body).encode() if body is not None else None, headers, method=method)
         try:
             r = self.op.open(req)
-            return r.status, r.read().decode()
+            raw = r.read()
+            return r.status, (json.loads(raw) if raw[:1] in (b"{", b"[") else raw.decode())
         except urllib.error.HTTPError as e:
-            return e.code, e.read().decode()
+            raw = e.read()
+            try:
+                return e.code, json.loads(raw)
+            except ValueError:
+                return e.code, raw.decode()
+
+    def post(self, path, **body):
+        return self.call("POST", path, body)
 
     def get(self, path):
-        try:
-            r = self.op.open(BASE + path)
-            return r.status, r.read().decode()
-        except urllib.error.HTTPError as e:
-            return e.code, e.read().decode()
+        return self.call("GET", path)
 
 
 class Mcp:
@@ -152,10 +159,10 @@ def stack():
     s = Stack()
     s.work, s.proc = work, proc
     s.web = Web()
-    st, _ = s.web.post("/signup", email="e2e@example.com", password="correct-horse-battery", invite=SIGNUP)
+    st, _ = s.web.post("/api/web/signup", email="e2e@example.com", password="correct-horse-battery", invite=SIGNUP)
     assert st == 200, st
-    st, page = s.web.post("/dashboard/tokens", name="e2e")
-    s.token = re.search(r"mcb_mcp_[A-Za-z0-9_-]+", page).group(0)
+    st, data = s.web.post("/api/web/tokens", name="e2e")
+    s.token = data["token"]
     s.mcp = Mcp(s.token)
     yield s
     import signal
@@ -199,9 +206,9 @@ class AgentRunner:
         if pair and not self.creds.load():
             self.wait(lambda: self.agent.state.pairing, 20, "pairing code")
             code = self.agent.state.pairing["code"]
-            st, page = self.stack.web.get(f"/pair?code={code}")
-            assert st == 200 and code in page
-            st, _ = self.stack.web.post("/pair/decision", code=code, decision="approve")
+            st, info = self.stack.web.get(f"/api/web/pair?code={code}")
+            assert st == 200 and info["device_name"]
+            st, _ = self.stack.web.post("/api/web/pair/decision", code=code, decision="approve")
             assert st == 200
         self.wait(lambda: self.agent.state.connection == "connected", 30, "connection")
         return self

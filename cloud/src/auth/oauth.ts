@@ -12,10 +12,10 @@
  */
 import type { Env } from "../env";
 import { b64urlEncode, randomId, randomToken, sha256Hex, timingSafeEqual } from "../lib/crypto";
-import { clientIp, json } from "../lib/http";
+import { clientIp, errorJson, json } from "../lib/http";
 import { rateLimit } from "../lib/ratelimit";
-import { consentPage, redirectPage, simplePage } from "./pages";
-import { currentUser, type SessionUser } from "./web";
+import type { SessionUser } from "./web";
+import { revokeApp } from "./account";
 
 const ACCESS_TTL_MS = 60 * 60_000;
 const REFRESH_TTL_MS = 30 * 86_400_000;
@@ -35,18 +35,6 @@ export function withCors(res: Response): Response {
   for (const [k, v] of Object.entries(CORS_HEADERS)) r.headers.set(k, v);
   return r;
 }
-
-const html = (body: string, status = 200) =>
-  new Response(body, {
-    status,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "no-store",
-      "x-frame-options": "DENY",
-      "referrer-policy": "same-origin",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
-    },
-  });
 
 const oauthError = (error: string, description: string, status = 400) =>
   withCors(json({ error, error_description: description }, status, { pragma: "no-cache" }));
@@ -135,7 +123,7 @@ interface AuthParams {
   resource: string;
 }
 
-type AuthCheck = { ok: true; p: AuthParams } | { ok: false; page: Response } | { ok: false; redirect: string };
+type AuthCheck = { ok: true; p: AuthParams } | { ok: false; error: string } | { ok: false; redirect: string };
 
 function redirectWith(uri: string, params: Record<string, string>): string {
   const u = new URL(uri);
@@ -147,8 +135,8 @@ function redirectWith(uri: string, params: Record<string, string>): string {
 async function checkAuthRequest(env: Env, q: URLSearchParams, origin: string): Promise<AuthCheck> {
   const client = await getClient(env, q.get("client_id"));
   const redirect = q.get("redirect_uri") ?? "";
-  if (!client) return { ok: false, page: html(simplePage("Unknown application", "This application is not registered. Remove and re-add the connector."), 400) };
-  if (!client.redirect_uris.includes(redirect)) return { ok: false, page: html(simplePage("Invalid redirect", "The redirect address does not match the application's registration."), 400) };
+  if (!client) return { ok: false, error: "This application is not registered. Remove and re-add the connector." };
+  if (!client.redirect_uris.includes(redirect)) return { ok: false, error: "The redirect address does not match the application's registration." };
   const state = q.get("state") ?? "";
   const fail = (error: string, desc: string) => ({ ok: false as const, redirect: redirectWith(redirect, { error, error_description: desc, state }) });
   if (q.get("response_type") !== "code") return fail("unsupported_response_type", "response_type must be code");
@@ -159,43 +147,41 @@ async function checkAuthRequest(env: Env, q: URLSearchParams, origin: string): P
   return { ok: true, p: { client, redirect_uri: redirect, state, code_challenge: challenge, resource: `${origin}/mcp` } };
 }
 
-async function authorizeGet(request: Request, env: Env, url: URL, user: SessionUser | null): Promise<Response> {
+/** JSON for the consent screen. Errors are returned (never redirected) until the redirect URI is trusted. */
+export async function oauthAuthorizeInfo(env: Env, url: URL, user: SessionUser | null): Promise<Response> {
   const chk = await checkAuthRequest(env, url.searchParams, url.origin);
-  if (!chk.ok) return "page" in chk ? chk.page : Response.redirect(chk.redirect, 302);
-  if (!user) return new Response(null, { status: 303, headers: { location: `/login?next=${encodeURIComponent(url.pathname + url.search)}` } });
+  if (!chk.ok) return "error" in chk ? json({ ok: true, status: "error", message: chk.error }) : json({ ok: true, status: "redirect", url: chk.redirect });
+  if (!user) return json({ ok: true, status: "login_required" });
   const p = chk.p;
-  return html(
-    consentPage({
-      user: user.email,
-      clientName: p.client.name,
-      redirectHost: new URL(p.redirect_uri).host || new URL(p.redirect_uri).protocol,
-      fields: { client_id: p.client.id, redirect_uri: p.redirect_uri, state: p.state, code_challenge: p.code_challenge, resource: p.resource },
-    }),
-  );
+  let host = p.redirect_uri;
+  try {
+    const u = new URL(p.redirect_uri);
+    host = u.host || u.protocol;
+  } catch {
+    /* validated at registration */
+  }
+  return json({
+    ok: true,
+    status: "consent",
+    user: user.email,
+    client_name: p.client.name,
+    redirect_host: host,
+    fields: { client_id: p.client.id, redirect_uri: p.redirect_uri, state: p.state, code_challenge: p.code_challenge, resource: p.resource },
+  });
 }
 
-function sameOrigin(request: Request): boolean {
-  const site = request.headers.get("sec-fetch-site");
-  if (site) return site === "same-origin" || site === "none";
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
-async function authorizeDecision(request: Request, env: Env, url: URL, user: SessionUser | null): Promise<Response> {
-  if (!user) return new Response(null, { status: 303, headers: { location: "/login" } });
-  if (!sameOrigin(request) || !(request.headers.get("content-type") ?? "").includes("application/x-www-form-urlencoded")) return html(simplePage("Blocked", "Cross-site or malformed request."), 400);
-  const f = new URLSearchParams((await request.text()).slice(0, 8192));
-  // never trust hidden fields: re-validate everything
-  const chk = await checkAuthRequest(env, new URLSearchParams({ response_type: "code", code_challenge_method: "S256", client_id: f.get("client_id") ?? "", redirect_uri: f.get("redirect_uri") ?? "", state: f.get("state") ?? "", code_challenge: f.get("code_challenge") ?? "", resource: f.get("resource") ?? "" }), url.origin);
-  if (!chk.ok) return "page" in chk ? chk.page : html(redirectPage(chk.redirect));
+/** Consent decision. Hidden fields are never trusted: everything is re-validated. */
+export async function oauthDecision(env: Env, url: URL, user: SessionUser, f: Record<string, string>): Promise<Response> {
+  const chk = await checkAuthRequest(env, new URLSearchParams({ response_type: "code", code_challenge_method: "S256", client_id: String(f.client_id ?? ""), redirect_uri: String(f.redirect_uri ?? ""), state: String(f.state ?? ""), code_challenge: String(f.code_challenge ?? ""), resource: String(f.resource ?? "") }), url.origin);
+  if (!chk.ok) return "error" in chk ? errorJson(400, "INVALID_REQUEST", chk.error) : json({ ok: true, redirect: chk.redirect });
   const p = chk.p;
-  if (f.get("decision") !== "approve") return html(redirectPage(redirectWith(p.redirect_uri, { error: "access_denied", error_description: "The user denied the request", state: p.state })));
-  if (!(await rateLimit(env, `oauth-consent:${user.id}`, 30, 3600))) return html(simplePage("Slow down", "Too many authorization attempts."), 429);
+  if (f.decision !== "approve") return json({ ok: true, redirect: redirectWith(p.redirect_uri, { error: "access_denied", error_description: "The user denied the request", state: p.state }) });
+  if (!(await rateLimit(env, `oauth-consent:${user.id}`, 30, 3600))) return errorJson(429, "RATE_LIMITED", "Too many authorization attempts.");
   const code = randomToken(32);
   await env.DB.prepare("INSERT INTO oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, resource, expires_at) VALUES (?1,?2,?3,?4,?5,?6,?7)")
     .bind(await sha256Hex(code), p.client.id, user.id, p.redirect_uri, p.code_challenge, p.resource, Date.now() + CODE_TTL_MS)
     .run();
-  return html(redirectPage(redirectWith(p.redirect_uri, { code, state: p.state })));
+  return json({ ok: true, redirect: redirectWith(p.redirect_uri, { code, state: p.state }) });
 }
 
 async function issueTokens(env: Env, clientId: string, clientName: string, userId: string, family: string) {
@@ -209,12 +195,7 @@ async function issueTokens(env: Env, clientId: string, clientName: string, userI
   return { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL_MS / 1000, refresh_token: refresh, scope: SCOPE };
 }
 
-export async function revokeGrant(env: Env, userId: string, clientId: string): Promise<void> {
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM oauth_refresh WHERE user_id = ?1 AND client_id = ?2").bind(userId, clientId),
-    env.DB.prepare("UPDATE mcp_tokens SET revoked_at = ?1 WHERE user_id = ?2 AND client_id = ?3 AND revoked_at IS NULL").bind(Date.now(), userId, clientId),
-  ]);
-}
+const revokeGrant = revokeApp;
 
 async function token(request: Request, env: Env): Promise<Response> {
   if (!(await rateLimit(env, `oauth-token:${clientIp(request)}`, 120, 60))) return oauthError("temporarily_unavailable", "Too many requests.", 429);
@@ -291,7 +272,5 @@ export async function handleOAuth(request: Request, env: Env, url: URL): Promise
   if (request.method === "POST" && p === "/oauth/register") return register(request, env);
   if (request.method === "POST" && p === "/oauth/token") return token(request, env);
   if (request.method === "POST" && p === "/oauth/revoke") return revoke(request, env);
-  if (p === "/oauth/authorize" && request.method === "GET") return authorizeGet(request, env, url, await currentUser(request, env));
-  if (p === "/oauth/authorize/decision" && request.method === "POST") return authorizeDecision(request, env, url, await currentUser(request, env));
   return null;
 }

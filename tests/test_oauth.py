@@ -45,14 +45,12 @@ def token_req(**form):
 
 def authorize(web, client_id, challenge, state="st4te", redirect=CALLBACK, approve=True, **extra):
     q = {"response_type": "code", "client_id": client_id, "redirect_uri": redirect, "code_challenge": challenge, "code_challenge_method": "S256", "state": state, **extra}
-    st, page = web.get("/oauth/authorize?" + urllib.parse.urlencode(q))
-    assert st == 200 and "Authorize" in page, (st, page[:200])
-    fields = {k: v for k, v in re.findall(r'<input type="hidden" name="([a-z_]+)" value="([^"]*)"', page)}
-    st, page = web.post("/oauth/authorize/decision", **{k: v.replace("&amp;", "&") for k, v in fields.items()}, decision="approve" if approve else "deny")
-    m = re.search(r'url=([^"]+)"', page)
-    assert st == 200 and m, page[:300]
-    u = urllib.parse.urlparse(m.group(1).replace("&amp;", "&"))
-    return urllib.parse.parse_qs(u.query), m.group(1)
+    st, info = web.get("/api/web/oauth/authorize?" + urllib.parse.urlencode(q))
+    assert st == 200 and info["status"] == "consent", (st, info)
+    st, r = web.post("/api/web/oauth/decision", **info["fields"], decision="approve" if approve else "deny")
+    assert st == 200, r
+    u = urllib.parse.urlparse(r["redirect"])
+    return urllib.parse.parse_qs(u.query), r["redirect"]
 
 
 def mcp_status(access):
@@ -91,8 +89,8 @@ def test_full_flow_pkce_refresh_rotation_and_revocation(stack):
     # not signed in -> bounced to login, and `next` preserves the authorize request
     v, ch = pkce()
     q = urllib.parse.urlencode({"response_type": "code", "client_id": cid, "redirect_uri": CALLBACK, "code_challenge": ch, "code_challenge_method": "S256", "state": "abc"})
-    s, _, h = raw_get("/oauth/authorize?" + q)
-    assert s == 303 and h["Location"].startswith("/login?next=%2Foauth%2Fauthorize")
+    st, info = Web().get("/api/web/oauth/authorize?" + q)
+    assert st == 200 and info["status"] == "login_required"
 
     # signed in -> consent -> code
     params, _ = authorize(stack.web, cid, ch, state="abc")
@@ -136,11 +134,11 @@ def test_dashboard_lists_and_revokes_connected_app(stack):
     params, _ = authorize(stack.web, client["client_id"], ch)
     s, tok = token_req(grant_type="authorization_code", client_id=client["client_id"], code=params["code"][0], redirect_uri=CALLBACK, code_verifier=v)
     assert s == 200 and mcp_status(tok["access_token"]) == 200
-    st, page = stack.web.get("/dashboard")
-    assert "Revocable App" in page and "Connected apps" in page
+    st, ov = stack.web.get("/api/web/overview")
+    assert any(a["name"] == "Revocable App" for a in ov["apps"])
     # OAuth tokens are not listed among manual tokens
-    assert "OAuth: Revocable App" not in page
-    st, _ = stack.web.post("/dashboard/apps/revoke", client_id=client["client_id"])
+    assert not any("OAuth" in t["name"] for t in ov["tokens"])
+    st, _ = stack.web.post("/api/web/apps/revoke", client_id=client["client_id"])
     assert mcp_status(tok["access_token"]) == 401
     assert token_req(grant_type="refresh_token", client_id=client["client_id"], refresh_token=tok["refresh_token"])[0] == 400
 
@@ -150,19 +148,17 @@ def test_authorize_request_validation(stack):
     cid = client["client_id"]
     v, ch = pkce()
     base = {"response_type": "code", "client_id": cid, "redirect_uri": CALLBACK, "code_challenge": ch, "code_challenge_method": "S256", "state": "s"}
-    # unregistered redirect: shown as an error page, never redirected
-    s, page, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "redirect_uri": "https://evil.example/cb"}))
-    assert s == 400 and "Location" not in h
-    # unknown client
-    s, page, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "client_id": "cli_nope"}))
-    assert s == 400 and "Location" not in h
-    # PKCE missing / plain method -> redirect with error
+    info = lambda q: stack.web.get("/api/web/oauth/authorize?" + urllib.parse.urlencode(q))[1]  # noqa: E731
+    # unregistered redirect / unknown client: an error is shown, never a redirect
+    r = info({**base, "redirect_uri": "https://evil.example/cb"})
+    assert r["status"] == "error"
+    assert info({**base, "client_id": "cli_nope"})["status"] == "error"
+    # PKCE missing / plain method -> redirect (to the registered URI) with an error
     for bad in ({"code_challenge": ""}, {"code_challenge_method": "plain"}):
-        s, _, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, **bad}))
-        assert s == 302 and "error=invalid_request" in h["Location"] and h["Location"].startswith(CALLBACK)
-    # wrong resource
-    s, _, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "resource": "https://other.example/mcp"}))
-    assert s == 302 and "error=invalid_target" in h["Location"]
+        r = info({**base, **bad})
+        assert r["status"] == "redirect" and "error=invalid_request" in r["url"] and r["url"].startswith(CALLBACK)
+    r = info({**base, "resource": "https://other.example/mcp"})
+    assert r["status"] == "redirect" and "error=invalid_target" in r["url"]
     # deny
     params, _ = authorize(stack.web, cid, ch, approve=False)
     assert params["error"] == ["access_denied"] and "code" not in params
@@ -171,24 +167,21 @@ def test_authorize_request_validation(stack):
 def test_consent_decision_cannot_be_forged_or_cross_site(stack):
     _, client = register("Forge")
     v, ch = pkce()
-    op = urllib.request.build_opener(_NoRedirect)
-    req = urllib.request.Request(BASE + "/oauth/authorize/decision", urllib.parse.urlencode({"client_id": client["client_id"], "redirect_uri": CALLBACK, "code_challenge": ch, "decision": "approve"}).encode(), {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded"})
+    body = {"client_id": client["client_id"], "redirect_uri": CALLBACK, "code_challenge": ch, "decision": "approve"}
+    # no session
+    st, r = Web().post("/api/web/oauth/decision", **body)
+    assert st == 401
+    # a signed-in user's browser tricked cross-site must not approve anything
+    st, r = stack.web.call("POST", "/api/web/oauth/decision", body, same_origin=False) if False else (None, None)
+    req = urllib.request.Request(BASE + "/api/web/oauth/decision", json.dumps(body).encode(), {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/json", "Cookie": "; ".join(f"{c.name}={c.value}" for c in stack.web.jar)})
     try:
-        r = op.open(req)
-        s, body = r.status, r.read().decode()
-    except urllib.error.HTTPError as e:
-        s, body = e.code, e.read().decode()
-    assert s == 303 and "code=" not in body  # no session: bounced to login, never issues a code
-    req = urllib.request.Request(BASE + "/oauth/authorize/decision", urllib.parse.urlencode({"client_id": client["client_id"], "redirect_uri": CALLBACK, "code_challenge": ch, "decision": "approve"}).encode(), {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded", "Cookie": "; ".join(f"{c.name}={c.value}" for c in stack.web.jar)})
-    try:
-        s = op.open(req).status
+        s = urllib.request.urlopen(req).status
     except urllib.error.HTTPError as e:
         s = e.code
-    assert s == 400, "a signed-in user's browser being tricked cross-site must not approve anything"
+    assert s == 403
     # tampering with hidden fields (redirect_uri swapped) is rejected on re-validation
-    web = stack.web
-    st, page = web.post("/oauth/authorize/decision", client_id=client["client_id"], redirect_uri="https://evil.example/cb", state="x", code_challenge=ch, resource=BASE + "/mcp", decision="approve")
-    assert st == 400 and "Invalid redirect" in page
+    st, r = stack.web.post("/api/web/oauth/decision", client_id=client["client_id"], redirect_uri="https://evil.example/cb", state="x", code_challenge=ch, resource=BASE + "/mcp", decision="approve")
+    assert st == 400
 
 
 def test_token_endpoint_edge_cases(stack):
