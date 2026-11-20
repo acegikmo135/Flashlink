@@ -24,5 +24,5 @@ new_sqlite_classes = ["UserHub", "TransferRelay"]
 [[d1_databases]]
 binding = "DB"
 database_name = "mcu-bridge"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "e6165d29-9710-444d-8ebb-a546f8434377"
 migrations_dir = "migrations"
