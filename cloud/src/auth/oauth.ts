@@ -57,7 +57,7 @@ export function authorizationServerMetadata(origin: string) {
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none"],
+    token_endpoint_auth_methods_supported: ["none", "client_secret_post", "client_secret_basic"],
     scopes_supported: [SCOPE],
   };
 }
@@ -81,35 +81,55 @@ interface Client {
   id: string;
   name: string;
   redirect_uris: string[];
+  secret_hash: string | null;
 }
 
 async function getClient(env: Env, id: string | null): Promise<Client | null> {
   if (!id || id.length > 80) return null;
-  const row = await env.DB.prepare("SELECT id, name, redirect_uris FROM oauth_clients WHERE id = ?1").bind(id).first<{ id: string; name: string; redirect_uris: string }>();
-  return row ? { id: row.id, name: row.name, redirect_uris: JSON.parse(row.redirect_uris) } : null;
+  const row = await env.DB.prepare("SELECT id, name, redirect_uris, secret_hash FROM oauth_clients WHERE id = ?1").bind(id).first<{ id: string; name: string; redirect_uris: string; secret_hash: string | null }>();
+  return row ? { id: row.id, name: row.name, redirect_uris: JSON.parse(row.redirect_uris), secret_hash: row.secret_hash } : null;
 }
 
 async function register(request: Request, env: Env): Promise<Response> {
-  if (!(await rateLimit(env, `oauth-register:${clientIp(request)}`, 30, 3600))) return oauthError("temporarily_unavailable", "Too many registrations.", 429);
+  if (!(await rateLimit(env, `oauth-register:${clientIp(request)}`, 60, 3600))) return oauthError("temporarily_unavailable", "Too many registrations.", 429);
   let body: Record<string, unknown> | null = null;
   try {
     const text = await request.text();
-    if (text.length > 8192) throw new Error("too large");
+    if (text.length > 16_384) throw new Error("too large");
     body = JSON.parse(text);
   } catch {
-    return oauthError("invalid_client_metadata", "Body must be JSON (max 8 KB).");
+    console.log("oauth.register.rejected", JSON.stringify({ reason: "unparseable body", ua: request.headers.get("user-agent"), ct: request.headers.get("content-type") }));
+    return oauthError("invalid_client_metadata", "Body must be JSON (max 16 KB).");
   }
   const uris = body?.redirect_uris;
-  if (!Array.isArray(uris) || uris.length === 0 || uris.length > 5 || !uris.every((u) => typeof u === "string" && validRedirectUri(u))) {
-    return oauthError("invalid_redirect_uri", "redirect_uris must be 1-5 absolute https, loopback-http or custom-scheme URIs without fragments.");
+  const bad = !Array.isArray(uris) ? "redirect_uris is not an array" : uris.length === 0 ? "redirect_uris is empty" : uris.length > 25 ? "too many redirect_uris" : (uris as unknown[]).find((u) => typeof u !== "string" || !validRedirectUri(u));
+  if (bad) {
+    // log what the client actually sent so rejected registrations can be diagnosed (no secrets in a registration request)
+    console.log("oauth.register.rejected", JSON.stringify({ reason: typeof bad === "string" ? bad : `invalid redirect uri: ${String(bad).slice(0, 200)}`, redirect_uris: Array.isArray(uris) ? uris.slice(0, 25) : uris, client_name: body?.client_name, auth_method: body?.token_endpoint_auth_method, keys: Object.keys(body ?? {}), ua: request.headers.get("user-agent") }));
+    return oauthError("invalid_redirect_uri", "redirect_uris must be 1-25 absolute https, loopback-http or custom-scheme URIs without fragments.");
   }
+  const redirectUris = uris as string[];
   const name = String(body?.client_name ?? "MCP client").replace(/[\u0000-\u001f<>]/g, "").slice(0, 60) || "MCP client";
+  const method = String(body?.token_endpoint_auth_method ?? "none");
+  const confidential = method === "client_secret_post" || method === "client_secret_basic";
   const id = randomId("cli", 12);
+  const secret = confidential ? `mcb_cs_${randomToken(32)}` : null;
   const now = Date.now();
-  await env.DB.prepare("INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?1,?2,?3,?4)").bind(id, name, JSON.stringify(uris), now).run();
+  await env.DB.prepare("INSERT INTO oauth_clients (id, name, redirect_uris, created_at, secret_hash) VALUES (?1,?2,?3,?4,?5)").bind(id, name, JSON.stringify(redirectUris), now, secret ? await sha256Hex(secret) : null).run();
+  console.log("oauth.register.ok", JSON.stringify({ client_name: name, redirect_uris: redirectUris, auth_method: method, ua: request.headers.get("user-agent") }));
   return withCors(
     json(
-      { client_id: id, client_id_issued_at: Math.floor(now / 1000), client_name: name, redirect_uris: uris, grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], token_endpoint_auth_method: "none", scope: SCOPE },
+      {
+        client_id: id,
+        ...(secret ? { client_secret: secret, client_secret_expires_at: 0 } : {}),
+        client_id_issued_at: Math.floor(now / 1000),
+        client_name: name,
+        redirect_uris: redirectUris,
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        token_endpoint_auth_method: confidential ? method : "none",
+        scope: SCOPE,
+      },
       201,
     ),
   );
@@ -207,8 +227,22 @@ async function token(request: Request, env: Env): Promise<Response> {
   } catch {
     return oauthError("invalid_request", "Unparseable body.");
   }
-  const client = await getClient(env, f.get("client_id"));
+  // client credentials may arrive via HTTP Basic (client_secret_basic) or in the body (client_secret_post / public clients)
+  let clientId = f.get("client_id");
+  let clientSecret = f.get("client_secret");
+  const basic = /^Basic\s+(\S+)$/i.exec(request.headers.get("authorization") ?? "");
+  if (basic) {
+    try {
+      const [bid, ...rest] = atob(basic[1]).split(":");
+      clientId = clientId ?? decodeURIComponent(bid);
+      clientSecret = clientSecret ?? decodeURIComponent(rest.join(":"));
+    } catch {
+      return oauthError("invalid_client", "Malformed Basic credentials.", 401);
+    }
+  }
+  const client = await getClient(env, clientId);
   if (!client) return oauthError("invalid_client", "Unknown client_id.", 401);
+  if (client.secret_hash && (!clientSecret || !timingSafeEqual(await sha256Hex(clientSecret), client.secret_hash))) return oauthError("invalid_client", "Invalid client credentials.", 401);
   const grant = f.get("grant_type");
 
   if (grant === "authorization_code") {

@@ -67,7 +67,7 @@ def test_discovery(stack):
     s, b, _ = http("GET", BASE + "/.well-known/oauth-authorization-server")
     md = json.loads(b)
     assert md["code_challenge_methods_supported"] == ["S256"] and md["registration_endpoint"].endswith("/oauth/register")
-    assert md["token_endpoint_auth_methods_supported"] == ["none"]
+    assert "none" in md["token_endpoint_auth_methods_supported"]
     s, _, h = http("OPTIONS", BASE + "/oauth/token")
     assert s == 204 and h["Access-Control-Allow-Origin"] == "*"
 
@@ -193,3 +193,42 @@ def test_token_endpoint_edge_cases(stack):
     assert s == 400 and r["error"] == "invalid_request"
     s, r = token_req(grant_type="refresh_token", client_id=c["client_id"], refresh_token="mcb_rt_bogus")
     assert s == 400 and r["error"] == "invalid_grant"
+
+
+def test_clients_that_want_a_secret_get_one_and_must_use_it(stack):
+    """Gemini/ChatGPT-style connectors register as confidential clients (client_secret_basic / _post)."""
+    for method in ("client_secret_basic", "client_secret_post"):
+        s, c = http_json_register(method)
+        assert s == 201 and c["client_secret"].startswith("mcb_cs_") and c["token_endpoint_auth_method"] == method
+        cid, secret = c["client_id"], c["client_secret"]
+        v, ch = pkce()
+        params, _ = authorize(stack.web, cid, ch)
+        code = params["code"][0]
+        form = dict(grant_type="authorization_code", client_id=cid, code=code, redirect_uri=CALLBACK, code_verifier=v)
+        # no secret / wrong secret -> invalid_client (and the code is NOT consumed for a failed client authentication)
+        assert token_req(**form)[0] == 401
+        assert token_req(**form, client_secret="wrong")[0] == 401
+        if method == "client_secret_post":
+            s, tok = token_req(**form, client_secret=secret)
+        else:
+            cred = base64.b64encode(f"{cid}:{secret}".encode()).decode()
+            s, b, _ = http("POST", BASE + "/oauth/token", urllib.parse.urlencode({k: v2 for k, v2 in form.items() if k != "client_id"}).encode(), {"Content-Type": "application/x-www-form-urlencoded", "Authorization": "Basic " + cred})
+            tok = json.loads(b)
+        assert s == 200 and tok["access_token"].startswith("mcb_mcp_"), (method, s, tok)
+        assert mcp_status(tok["access_token"]) == 200
+        # refresh also requires the secret
+        assert token_req(grant_type="refresh_token", client_id=cid, refresh_token=tok["refresh_token"])[0] == 401
+        assert token_req(grant_type="refresh_token", client_id=cid, refresh_token=tok["refresh_token"], client_secret=secret)[0] == 200
+    s, md = 0, json.loads(http("GET", BASE + "/.well-known/oauth-authorization-server")[1])
+    assert set(md["token_endpoint_auth_methods_supported"]) >= {"none", "client_secret_post", "client_secret_basic"}
+
+
+def http_json_register(method):
+    s, b, _ = http("POST", BASE + "/oauth/register", json.dumps({"client_name": "Secretive", "redirect_uris": [CALLBACK], "token_endpoint_auth_method": method}).encode(), {"Content-Type": "application/json"})
+    return s, json.loads(b)
+
+
+def test_many_redirect_uris_are_accepted_up_to_a_sane_limit(stack):
+    many = [f"https://gemini.google.com/mcp/oauth/callback/{i}" for i in range(20)]
+    assert register(uris=many)[0] == 201
+    assert register(uris=[f"https://x.example/cb/{i}" for i in range(26)])[0] == 400
