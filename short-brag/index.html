@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<!-- MCU Bridge — 15 s vertical cut (brag style): 1080×1920, poster color-block, hard cuts on a 120 bpm grid, real product UI.
+     Text stays inside the Reels/TikTok/Shorts safe band (y 250–1536) and out of the right 140 px of the lower half. Pure function of timeline time. -->
+<head>
+<meta charset="utf-8">
+<title>MCU Bridge — 15 s vertical (brag)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+:root{--blue:#007aff;--ink:#0b1020;--cream:#f5f1e8;--green:#34c759;--orange:#ff9500}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:"Bricolage Grotesque",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;left:50%;top:50%;width:1080px;height:1920px;transform:translate(-50%,-50%);overflow:hidden;background:var(--cream)}
+.sc{position:absolute;inset:0;display:none;overflow:hidden}
+.big{position:absolute;font-weight:800;letter-spacing:-.055em;line-height:.92;white-space:nowrap;color:var(--ink)}
+.c{left:0;right:0;text-align:center}
+.w{display:inline-block;will-change:transform,opacity}
+.grain{position:absolute;inset:-60px;opacity:.10;mix-blend-mode:multiply;pointer-events:none;z-index:50}
+.slab{position:absolute;left:-20px;right:-20px;height:2400px;z-index:60;display:none}
+#s1 .hl{position:relative;display:inline-block;padding:0 .12em;margin:0 -.04em}
+#s1 .hl i{position:absolute;left:0;right:0;top:.12em;bottom:.02em;background:var(--blue);transform-origin:0 50%;transform:scaleX(0);border-radius:.08em;z-index:-1}
+#s1 .hl span{color:#fff}
+#s2{background:var(--blue)}#s2 .big{color:#fff}
+.tile{position:absolute;border-radius:22%;background:#fff;display:grid;place-items:center;box-shadow:0 30px 90px rgba(0,30,110,.45)}
+.sub{position:absolute;font-weight:500;letter-spacing:-.02em;color:rgba(255,255,255,.92)}
+#s3{background:var(--cream);background-image:radial-gradient(rgba(11,16,32,.12) 2px,transparent 2px);background-size:44px 44px}
+#uiwrap{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0;will-change:transform}
+#win{position:absolute;left:0;top:0;width:1280px;height:800px;border-radius:30px;overflow:hidden;box-shadow:0 50px 120px rgba(11,16,32,.35),0 0 0 3px rgba(11,16,32,.9);background:#fff}
+#win img{position:absolute;left:0;top:0;width:1280px;height:800px;display:block}
+.prompt{position:absolute;left:140px;width:800px;top:1330px;height:96px;border-radius:48px;background:var(--ink);color:#fff;display:flex;align-items:center;padding:0 38px;font-size:36px;font-weight:500;letter-spacing:-.015em;box-shadow:0 30px 70px rgba(11,16,32,.35);z-index:20;white-space:nowrap}
+.prompt .caret{display:inline-block;width:4px;height:40px;background:#5aa9ff;margin-left:4px}
+.chip{position:absolute;left:50%;top:1232px;transform:translateX(-50%);font-family:"DM Mono",monospace;font-size:28px;color:#0a5fe0;background:#dcebff;border:2px solid #7db6ff;padding:11px 22px;border-radius:18px;z-index:20;white-space:nowrap}
+.note{position:absolute;font-weight:800;letter-spacing:-.02em;font-size:34px;color:var(--cream);background:var(--ink);padding:10px 24px;border-radius:999px;white-space:nowrap;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.ring{position:absolute;border:6px solid var(--blue);border-radius:999px;pointer-events:none}
+.stk{position:absolute;font-weight:800;letter-spacing:-.03em;padding:16px 30px;border-radius:999px;color:#fff;white-space:nowrap;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+#s4{background:var(--ink)}#s4 .big{color:var(--cream)}
+#reel{position:absolute;left:0;right:0;top:820px;height:200px;overflow:hidden}
+#reel .r{position:absolute;left:0;right:0;text-align:center;font-weight:800;font-size:150px;letter-spacing:-.055em;color:#5aa9ff;white-space:nowrap;line-height:200px;height:200px}
+#s5{background:var(--blue)}#s5 .big{color:#fff}
+#led{position:absolute;left:540px;top:1180px;width:380px;height:380px;margin:-190px 0 0 -190px;border-radius:50%}
+#led .halo{position:absolute;inset:-100px;border-radius:50%;background:radial-gradient(circle,rgba(255,221,120,.95) 0%,rgba(255,176,32,.5) 40%,rgba(255,176,32,0) 70%);opacity:0}
+#led .rim{position:absolute;inset:0;border-radius:50%;border:14px solid #fff;opacity:.95}
+#led .core{position:absolute;inset:48px;border-radius:50%;background:#ffd45a;opacity:0;box-shadow:0 0 80px 26px #ffb020}
+#s6{background:var(--cream)}
+.url{position:absolute;left:50%;transform:translateX(-50%);font-family:"DM Mono",monospace;font-size:29px;font-weight:500;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:999px;padding:16px 34px;white-space:nowrap;box-shadow:7px 7px 0 var(--ink)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <section class="sc" id="s1">
+    <div class="big" id="s1a" style="left:70px;top:640px;font-size:168px">
+      <div><span class="w">AI</span> <span class="w">wrote</span></div>
+      <div><span class="w">the</span> <span class="w">firmware.</span></div>
+    </div>
+    <div class="big" id="s1b" style="left:70px;top:520px;font-size:168px;display:none">
+      <div><span class="w">Then</span> <span class="w">asked</span></div>
+      <div><span class="w hl" id="you"><i></i><span>YOU</span></span></div>
+      <div><span class="w">to</span> <span class="w">flash</span> <span class="w">it.</span></div>
+    </div>
+  </section>
+  <section class="sc" id="s2">
+    <div class="tile" id="t2" style="left:420px;top:560px;width:240px;height:240px">
+      <svg viewBox="0 0 64 64" width="176" height="176"><g fill="none" stroke="#007aff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>
+    </div>
+    <div class="big c" id="s2a" style="top:850px;font-size:176px"><span class="w">MCU</span> <span class="w">Bridge</span></div>
+    <div class="sub c" id="s2b" style="top:1060px;font-size:68px"><span class="w">Let</span> <span class="w">the</span> <span class="w">AI</span> <span class="w">flash</span> <span class="w">it.</span></div>
+  </section>
+  <section class="sc" id="s3">
+    <div id="uirise" style="position:absolute;inset:0"><div id="uiwrap">
+      <div id="win"><img id="imFlash" src="assets/ui-devices-flashing.png"><img id="imIdle" src="assets/ui-devices-idle.png"></div>
+      <div class="note" id="n1" style="left:318px;top:188px;opacity:0">Name your boards</div>
+      <div class="ring" id="rg1" style="left:300px;top:240px;width:280px;height:76px;opacity:0"></div>
+      <div class="stk" id="k1" style="left:640px;top:230px;background:var(--green);font-size:46px;opacity:0">Verified ✓</div>
+    </div></div>
+    <div class="chip" id="chip" style="opacity:0">build_and_flash · Kitchen ESP32</div>
+    <div class="prompt" id="prompt" style="opacity:0"><span id="ptxt"></span><span class="caret" id="pcar"></span></div>
+  </section>
+  <section class="sc" id="s4">
+    <div class="big c" id="s4a" style="top:600px;font-size:150px"><span class="w">Flashes</span> <span class="w">your</span></div>
+    <div id="reel"></div>
+    <div class="stk" id="k2" style="left:150px;top:1180px;background:var(--green);font-size:46px;transform:rotate(-3deg);opacity:0">Verified by the desktop app</div>
+  </section>
+  <section class="sc" id="s5">
+    <div class="big c" id="s5a" style="top:420px;font-size:222px"><span class="w">It</span> <span class="w">blinked.</span></div>
+    <div id="led"><i class="halo"></i><i class="rim"></i><i class="core"></i></div>
+    <div class="big c" id="s5b" style="top:1400px;font-size:106px"><span class="w">Verified,</span> <span class="w">not</span> <span class="w">vibes.</span></div>
+  </section>
+  <section class="sc" id="s6">
+    <div class="tile" id="t6" style="left:425px;top:470px;width:230px;height:230px;background:#007aff">
+      <svg viewBox="0 0 64 64" width="168" height="168"><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>
+    </div>
+    <div class="big c" id="s6a" style="top:760px;font-size:170px"><span class="w">MCU</span> <span class="w">Bridge</span></div>
+    <div class="big c" id="s6b" style="top:970px;font-size:70px;font-weight:500;letter-spacing:-.035em;line-height:1.05;white-space:normal"><span class="w">Add</span> <span class="w">it</span> <span class="w">to</span> <span class="w">your</span> <span class="w">AI</span><br><span class="w">as</span> <span class="w">a</span> <span class="w">connector.</span></div>
+    <div class="url" id="s6c" style="top:1210px">mcu-bridge.manthankansagra.workers.dev</div>
+  </section>
+  <div class="slab" id="slab"></div>
+  <svg class="grain" width="1200" height="2040"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="5"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.2 -.15"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+</div>
+<audio id="aud" src="out/mix.wav" preload="auto"></audio>
+<div id="hint" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99;font:500 22px system-ui;color:#fff;background:#000a;padding:12px 22px;border-radius:30px;opacity:0;pointer-events:none">Tap to play with sound</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s);const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const BPM=120,BEAT=60/BPM,DUR=15;
+const SFX=[];const cue=(t,type,o={})=>SFX.push({t,type,...o});window.__sfx=SFX;window.__bpm=BPM;
+const stage=$('#stage');const fit=()=>{const s=Math.min(innerWidth/1080,innerHeight/1920);stage.style.transform=`translate(-50%,-50%) scale(${s})`;};addEventListener('resize',fit);fit();
+const tl=gsap.timeline({paused:true});
+const show=(sel,at)=>tl.set(sel,{display:'block'},at),hide=(sel,at)=>tl.set(sel,{display:'none'},at);
+const slab=$('#slab');
+function wipe(at,color,dir=1,{dur=.2}={}){ // vertical slab: dir>0 sweeps down, <0 sweeps up
+  const H=2400,from=dir>0?-H:1920,to=dir>0?1920+40:-H-40;
+  tl.set(slab,{display:'block',background:color,y:from},at);
+  tl.to(slab,{y:dir>0?0:-480,duration:dur,ease:'power3.in'},at);
+  tl.to(slab,{y:to,duration:dur,ease:'power3.out'},at+dur);
+  tl.set(slab,{display:'none'},at+dur*2+.01);
+  cue(at,'whoosh',{dur:dur*2});
+}
+const slam=(els,at,{from=1.35}={})=>{tl.fromTo(els,{opacity:0,scale:from,yPercent:18},{opacity:1,scale:1,yPercent:0,duration:.22,ease:'power4.out',immediateRender:false},at);cue(at,'thud',{amp:.8});cue(at,'click');};
+const shake=(at,amp=10,dur=.18)=>{const o={v:0};tl.fromTo(o,{v:1},{v:0,duration:dur,ease:'power2.out',immediateRender:false,onUpdate(){const k=o.v,t=tl.time();
+  for(const s of $$('.sc'))s.style.transform=`translate(${Math.sin(t*180)*amp*k}px,${Math.cos(t*150)*amp*k*.6}px)`;}},at);tl.set($$('.sc'),{x:0,y:0,clearProps:'transform'},at+dur+.001);};
+const typeTo=(el,str,at,dur)=>{const o={i:0};tl.fromTo(o,{i:0},{i:str.length,duration:dur,ease:'none',immediateRender:false,onUpdate(){el.textContent=str.slice(0,Math.round(o.i));}},at);for(let i=0;i<str.length;i++)cue(at+dur*i/str.length,'click',{v:i});};
+const B=n=>n*BEAT;
+tl.set('.sc',{display:'none'},0);
+
+/* S1 · 0 → 3.0 — hook (cream) */
+show('#s1',0);tl.set($$('#s1a .w,#s1b .w'),{opacity:0},0);
+slam($$('#s1a > div:nth-child(1) .w'),B(0));slam($$('#s1a > div:nth-child(2) .w'),B(1));shake(B(0),8);shake(B(1),8);
+tl.to('#s1a',{opacity:0,y:-50,duration:.16,ease:'power2.in'},1.4);tl.set('#s1b',{display:'block'},1.55);
+slam($$('#s1b > div:nth-child(1) .w'),B(3.2));         // 1.6
+slam($$('#you'),B(4));                                   // 2.0
+tl.fromTo('#you i',{scaleX:0},{scaleX:1,duration:.25,ease:'power3.out',immediateRender:false},B(4)+.06);
+slam($$('#s1b > div:nth-child(3) .w'),B(4.7));         // 2.35
+shake(B(4),12);shake(B(4.7),8);cue(B(4),'sweep',{dur:.5,lo:200,hi:900,amp:.25});
+
+/* S2 · 3.0 → 4.5 — the name (blue) */
+wipe(2.82,'#007aff',1);show('#s2',3.02);hide('#s1',3.03);
+tl.set(['#t2','#s2a .w','#s2b .w'],{opacity:0},0);
+tl.fromTo('#t2',{scale:.3,rotate:-14,opacity:0},{scale:1,rotate:0,opacity:1,duration:.45,ease:'back.out(1.8)',immediateRender:false},B(6));cue(B(6),'thud',{amp:1.2});cue(B(6),'sparkle');
+slam($$('#s2a .w'),B(6.4),{from:1.5});shake(B(6),14);
+tl.fromTo($$('#s2b .w'),{opacity:0,yPercent:70},{opacity:1,yPercent:0,duration:.35,ease:'power4.out',stagger:.07,immediateRender:false},B(7.2));cue(B(7.2),'pop');
+
+/* S3 · 4.5 → 8.5 — the product in use (cream + real UI) */
+wipe(4.32,'#0b1020',-1);show('#s3',4.52);hide('#s2',4.53);
+tl.set(['#uirise','#chip','#prompt'],{opacity:0},0);
+const ui={fx:640,fy:400,s:.78};
+const applyUI=()=>{$('#uiwrap').style.transform=`translate(${540-ui.fx*ui.s}px,${800-ui.fy*ui.s}px) scale(${ui.s})`;};applyUI();
+const uiTo=(at,dur,fx,fy,s,ease='power3.inOut')=>tl.to(ui,{fx,fy,s,duration:dur,ease,onUpdate:applyUI},at);
+tl.fromTo('#prompt',{opacity:0,y:50,scale:.94},{opacity:1,y:0,scale:1,duration:.3,ease:'back.out(1.6)',immediateRender:false},4.55);cue(4.55,'pop');
+typeTo($('#ptxt'),'Flash blink to Kitchen ESP32',4.85,.95);
+tl.set('#pcar',{opacity:0},5.8);
+tl.fromTo('#chip',{opacity:0,y:20,scale:.9},{opacity:1,y:0,scale:1,duration:.3,ease:'back.out(1.7)',immediateRender:false},5.8);cue(5.8,'pop',{hi:1});
+tl.to(['#prompt','#chip'],{opacity:0,y:80,duration:.25,ease:'power2.in'},6.15);
+tl.set('#imIdle',{opacity:0},0);tl.set('#imFlash',{opacity:1},0);
+tl.fromTo('#uirise',{opacity:0,y:260},{opacity:1,y:0,duration:.5,ease:'expo.out',immediateRender:false},6.15);cue(6.15,'sweep',{dur:.45,lo:300,hi:1500,amp:.22});
+uiTo(6.5,.6,405,262,1.95);
+tl.fromTo('#rg1',{opacity:0,scale:1.3},{opacity:1,scale:1,duration:.28,ease:'back.out(2)',immediateRender:false},7.0);
+tl.fromTo('#n1',{opacity:0,x:-30},{opacity:1,x:0,duration:.35,ease:'power3.out',immediateRender:false},7.05);cue(7.05,'tick',{hi:1});
+tl.to(['#n1','#rg1'],{opacity:0,duration:.18},7.6);
+uiTo(7.5,.45,834,272,2.1);
+tl.set('#imIdle',{opacity:1},7.9);tl.set('#imFlash',{opacity:0},7.9);cue(7.9,'ding');
+tl.fromTo('#k1',{opacity:0,scale:.2,rotate:-14},{opacity:1,scale:1,rotate:-4,duration:.35,ease:'back.out(2.2)',immediateRender:false},7.93);
+
+/* S4 · 8.5 → 11.0 — what it flashes (ink) */
+wipe(8.3,'#f5f1e8',1);show('#s4',8.5);hide('#s3',8.51);
+tl.set('#s4a .w',{opacity:0},0);
+slam($$('#s4a .w'),B(17.5),{from:1.3});shake(B(17.5),9);   // 8.75
+const ITEMS=['Arduino Uno','Arduino Nano','Arduino Mega','ESP32'];
+const reel=$('#reel');ITEMS.forEach(t=>{const d=document.createElement('div');d.className='r';d.textContent=t;reel.appendChild(d);});
+tl.set($$('#reel .r'),{yPercent:100},0);
+ITEMS.forEach((t,i)=>{const at=B(18)+i*B(1);const el=$$('#reel .r')[i];   // 9.0 9.5 10.0 10.5
+  tl.fromTo(el,{yPercent:100},{yPercent:0,duration:.18,ease:'power4.out',immediateRender:false},at);
+  if(i<ITEMS.length-1)tl.to(el,{yPercent:-100,duration:.18,ease:'power4.in'},at+B(1)-.18);
+  cue(at,'click',{v:i});cue(at,'thud',{amp:.5});});
+tl.set('#k2',{opacity:0},0);
+tl.fromTo('#k2',{opacity:0,scale:.2},{opacity:1,scale:1,duration:.35,ease:'back.out(2.2)',immediateRender:false},B(20));cue(B(20),'pop');
+
+/* S5 · 11.0 → 13.0 — the punchline (blue) */
+wipe(10.8,'#007aff',-1);show('#s5',11.0);hide('#s4',11.01);
+tl.set(['#s5a .w','#s5b .w'],{opacity:0},0);tl.set('#led',{opacity:1},0);
+[B(23),B(24),B(25)].forEach((t,i)=>{
+  tl.fromTo('#led .halo',{opacity:0,scale:.6},{opacity:1,scale:1.05,duration:.09,ease:'power2.out',immediateRender:false},t);
+  tl.to('#led .halo',{opacity:0,scale:.8,duration:.3,ease:'power2.in'},t+.09);
+  tl.fromTo('#led .core',{opacity:0},{opacity:1,duration:.05,immediateRender:false},t);
+  tl.to('#led .core',{opacity:0,duration:.26,ease:'power2.in'},t+.12);
+  tl.fromTo('#led',{scale:1},{scale:1.06,duration:.08,ease:'power2.out',immediateRender:false},t);
+  tl.to('#led',{scale:1,duration:.3,ease:'power2.in'},t+.08);
+  cue(t,'blink',{v:i});});
+slam($$('#s5a .w'),B(22.5),{from:1.25});shake(B(22.5),14);   // 11.25
+slam($$('#s5b .w'),B(24),{from:1.25});shake(B(24),9);cue(B(24),'ding');   // 12.0
+
+/* S6 · 13.0 → 15.0 — end card (cream) */
+wipe(12.8,'#f5f1e8',1);show('#s6',13.0);hide('#s5',13.01);
+tl.set(['#t6','#s6a .w','#s6b .w','#s6c'],{opacity:0},0);
+tl.fromTo('#t6',{scale:.3,rotate:12,opacity:0},{scale:1,rotate:0,opacity:1,duration:.45,ease:'back.out(1.8)',immediateRender:false},B(26));cue(B(26),'thud',{amp:1.1});cue(B(26),'sparkle');
+slam($$('#s6a .w'),B(26.5),{from:1.4});    // 13.25
+tl.fromTo($$('#s6b .w'),{opacity:0,yPercent:70},{opacity:1,yPercent:0,duration:.35,ease:'power4.out',stagger:.05,immediateRender:false},B(27.3));cue(B(27.3),'pop');
+tl.fromTo('#s6c',{opacity:0,y:40,scale:.9},{opacity:1,y:0,scale:1,duration:.4,ease:'back.out(1.8)',immediateRender:false},B(28.2));cue(B(28.2),'ding',{hi:1});
+tl.to({},{duration:.01},DUR);
+tl.to({v:0},{v:1,duration:DUR,ease:'none',onUpdate(){const g=Math.floor(tl.time()*24);$('.grain').style.transform=`translate(${-((g*37)%60)}px,${-((g*53)%60)}px)`;}},0);
+
+const aud=$('#aud'),hint=$('#hint');const EXPORT=Q.has('export');
+window.DUR=DUR;window.seekTo=t=>{tl.pause();tl.seek(t,false);applyUI();};
+if(!EXPORT){
+  const start=()=>{tl.play(0);aud.currentTime=0;aud.play().catch(()=>{});};
+  tl.eventCallback('onComplete',start);
+  document.fonts.ready.then(()=>{aud.play().then(()=>{aud.pause();start();}).catch(()=>{tl.seek(14.2);tl.pause();hint.style.opacity=.9;addEventListener('pointerdown',()=>{hint.style.opacity=0;start();},{once:true});});});
+  (function sync(){if(!tl.paused()&&Math.abs(aud.currentTime-tl.time())>.12)aud.currentTime=tl.time();requestAnimationFrame(sync);})();
+}
+</script>
+</body>
+</html>
