@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<!-- MCU Bridge launch film — built with the Bang Motion approach: one continuous world, a moving camera, deterministic (everything is a function of timeline time). 34 s · 16:9 · sound effects only. -->
+<head>
+<meta charset="utf-8">
+<title>MCU Bridge — Launch</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+:root{--blue:#0a84ff;--blue2:#64b5ff;--navy:#040a18;--navy2:#0a1530;--ink:#f4f7ff;--mut:#8fa0c4}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:"Geist",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+#stage{position:fixed;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%);overflow:hidden;background:var(--navy)}
+/* ---------- background: deep navy, drifting glow blobs, film grain ---------- */
+.bg{position:absolute;inset:0}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}
+.b1{width:1100px;height:1100px;left:-200px;top:-300px;background:radial-gradient(circle,#0a84ff 0%,rgba(10,132,255,0) 68%);opacity:.55}
+.b2{width:900px;height:900px;left:1100px;top:380px;background:radial-gradient(circle,#2b4cff 0%,rgba(43,76,255,0) 68%);opacity:.42}
+.b3{width:700px;height:700px;left:620px;top:600px;background:radial-gradient(circle,#00c6ff 0%,rgba(0,198,255,0) 68%);opacity:.22}
+#grain{position:absolute;inset:-100px;opacity:.13;mix-blend-mode:overlay;pointer-events:none;z-index:30}
+.vig{position:absolute;inset:0;pointer-events:none;z-index:20;background:radial-gradient(ellipse 80% 72% at 50% 50%,transparent 45%,rgba(2,5,14,.72) 100%)}
+/* ---------- the world (camera rig) ---------- */
+#world{position:absolute;left:0;top:0;width:11000px;height:1080px;transform-origin:0 0;will-change:transform}
+svg.beam{position:absolute;left:0;top:0;width:11000px;height:1080px;overflow:visible}
+.at{position:absolute;transform:translate(-50%,-50%)}
+.glass{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.035));border:1px solid rgba(255,255,255,.16);border-radius:34px;box-shadow:0 40px 120px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18)}
+/* chat */
+#chat{width:860px;padding:34px 38px 38px;display:flex;flex-direction:column;gap:22px}
+.chead{display:flex;align-items:center;gap:12px;color:var(--mut);font-size:22px;font-weight:500;padding-bottom:6px}
+.spark{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#64b5ff,#0a84ff);display:grid;place-items:center}
+.spark i{width:12px;height:12px;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.msg{font-size:38px;line-height:1.28;padding:22px 30px;border-radius:30px;max-width:92%;letter-spacing:-.01em}
+.me{align-self:flex-end;background:linear-gradient(135deg,#2b95ff,#0a6cf0);box-shadow:0 14px 50px rgba(10,132,255,.45)}
+.ai{align-self:flex-start;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:34px;color:#dfe8ff}
+.caret{display:inline-block;width:3px;height:.95em;background:#fff;vertical-align:-.12em;margin-left:3px}
+.tool{display:inline-flex;align-items:center;gap:10px;font-family:"Geist Mono",monospace;font-size:24px;color:#9fd0ff;background:rgba(10,132,255,.16);border:1px solid rgba(100,181,255,.35);padding:8px 16px;border-radius:14px;margin-top:14px}
+.bar{height:10px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:18px;width:520px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#0a84ff,#64e3ff);border-radius:6px;box-shadow:0 0 18px #3fb0ff}
+/* cloud */
+.codeln{position:absolute;font-family:"Geist Mono",monospace;font-size:27px;color:#9fd0ff;white-space:nowrap;opacity:0}
+.fw{width:640px;padding:30px 34px;display:flex;flex-direction:column;gap:14px}
+.fw .row{display:flex;justify-content:space-between;align-items:center;font-size:30px;font-weight:500}
+.fw .mono{font-family:"Geist Mono",monospace;font-size:24px;color:var(--mut)}
+.ok{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#30d158;box-shadow:0 0 26px rgba(48,209,88,.6)}
+.ok svg{width:22px;height:22px}
+.pill{font-family:"Geist Mono",monospace;font-size:24px;padding:9px 18px;border-radius:30px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#cfe0ff}
+/* pc */
+#mon{width:1180px;height:700px;border-radius:38px;padding:16px;background:linear-gradient(160deg,#1b2a4d,#0b1530);border:1px solid rgba(255,255,255,.18);box-shadow:0 60px 140px rgba(0,0,0,.6)}
+#screen{width:100%;height:100%;border-radius:26px;overflow:hidden;background:linear-gradient(160deg,#0d1b3d,#07102a);display:flex;position:relative}
+#side{width:230px;border-right:1px solid rgba(255,255,255,.08);padding:30px 22px;display:flex;flex-direction:column;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:600;font-size:23px}
+.nav{height:46px;border-radius:14px;background:rgba(255,255,255,.05)}
+.nav.on{background:rgba(10,132,255,.28);border:1px solid rgba(100,181,255,.4)}
+#main{flex:1;padding:36px 40px;display:flex;flex-direction:column;gap:26px}
+.h1{font-size:40px;font-weight:600;letter-spacing:-.02em}
+.dev{display:flex;align-items:center;gap:22px;padding:26px 30px;border-radius:24px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.dev .ic{width:70px;height:70px;border-radius:20px;background:linear-gradient(135deg,#00979d,#005f66);display:grid;place-items:center;font-family:"Geist Mono";font-size:20px}
+.dev .t{flex:1}.dev .t b{display:block;font-size:31px;font-weight:600}.dev .t span{font-size:23px;color:var(--mut);font-family:"Geist Mono"}
+.st{font-size:23px;font-weight:600;padding:10px 20px;border-radius:30px;background:rgba(48,209,88,.16);color:#6ff0a0;border:1px solid rgba(48,209,88,.4)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#30d158;margin-right:10px;box-shadow:0 0 12px #30d158}
+#log{font-family:"Geist Mono",monospace;font-size:24px;color:#8fb4ff;display:flex;flex-direction:column;gap:14px;margin-top:10px}.ll{opacity:0}.okl{color:#6ff0a0}
+.toast{position:absolute;right:30px;bottom:30px;width:520px;padding:24px 28px;border-radius:26px;display:flex;gap:18px;align-items:center;background:rgba(18,32,70,.92);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.toast b{font-size:28px;font-weight:600;display:block}.toast span{font-size:22px;color:var(--mut);font-family:"Geist Mono"}
+/* board */
+#board{width:1100px;height:754px}
+/* statements — screen space, over the world */
+#words{position:absolute;inset:0;z-index:15;pointer-events:none}
+.st1{position:absolute;white-space:nowrap;font-weight:500;letter-spacing:-.035em;opacity:0;text-shadow:0 6px 40px rgba(0,0,0,.55)}
+.st1 em{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;letter-spacing:-.01em;color:var(--blue2)}
+.ch{display:inline-block;opacity:0;will-change:transform,opacity,filter}.wd{display:inline-block;white-space:nowrap}
+/* finale */
+#finale{position:absolute;inset:0;z-index:25;opacity:0;visibility:hidden;background:radial-gradient(90% 80% at 50% 62%,#1d8bff 0%,#0a5fe0 38%,#06285f 78%,#040f2e 100%);overflow:hidden}
+#finale .fb{position:absolute;border-radius:50%;filter:blur(70px)}
+.lg{position:absolute;left:50%;top:352px;width:230px;height:230px;margin-left:-115px;opacity:0;filter:drop-shadow(0 30px 70px rgba(0,30,100,.65))}
+.ring{position:absolute;left:50%;top:467px;width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:50%;border:2px solid rgba(255,255,255,.7);opacity:0}
+#wm{position:absolute;left:0;right:0;top:640px;text-align:center;font-size:132px;font-weight:600;letter-spacing:-.045em}
+#tag{position:absolute;left:0;right:0;top:812px;text-align:center;font-size:50px;font-weight:400;color:rgba(255,255,255,.88);letter-spacing:-.02em}
+#tag em{font-family:"Instrument Serif",serif;font-style:italic;color:#fff}
+#chips{position:absolute;left:0;right:0;top:930px;display:flex;justify-content:center;gap:16px;opacity:0}
+#chips .pill{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff;font-size:26px}
+#flash{position:absolute;inset:0;z-index:40;background:radial-gradient(circle at 50% 50%,#fff 0%,#bfe0ff 40%,#2d90ff 100%);opacity:0;pointer-events:none}
+#hint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99;font:500 22px Geist,system-ui;color:#fff;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
+  <div id="world">
+    <svg class="beam" viewBox="0 0 11000 1080">
+      <defs>
+        <linearGradient id="bg1" x1="0" x2="1"><stop offset="0" stop-color="#64b5ff" stop-opacity=".0"/><stop offset=".15" stop-color="#64b5ff"/><stop offset=".85" stop-color="#3fd0ff"/><stop offset="1" stop-color="#3fd0ff" stop-opacity="0"/></linearGradient>
+        <filter id="glow" x="-10%" y="-200%" width="120%" height="500%"><feGaussianBlur stdDeviation="9"/></filter>
+      </defs>
+      <path id="route" d="M 1000 700 C 1800 780, 2500 360, 3300 560 S 5000 720, 5700 620 S 7300 560, 8000 680" fill="none" stroke="none"/>
+      <path id="beamGlow" d="M 1000 700 C 1800 780, 2500 360, 3300 560 S 5000 720, 5700 620 S 7300 560, 8000 680" fill="none" stroke="url(#bg1)" stroke-width="14" filter="url(#glow)" opacity=".55"/>
+      <path id="beamDash" d="M 1000 700 C 1800 780, 2500 360, 3300 560 S 5000 720, 5700 620 S 7300 560, 8000 680" fill="none" stroke="url(#bg1)" stroke-width="3" stroke-dasharray="3 22" stroke-linecap="round"/>
+    </svg>
+    <div id="orbs"></div>
+
+    <!-- A · chat -->
+    <div class="at glass" id="chat" style="left:1000px;top:540px">
+      <div class="chead"><span class="spark"><i></i></span>Any AI chat</div>
+      <div class="msg me" id="m1"><span id="m1t"></span><span class="caret" id="car"></span></div>
+      <div class="msg ai" id="m2">Compiling for your Uno, then flashing it now.<br>
+        <span class="tool">⚡ build_and_flash</span>
+        <div class="bar"><i id="cbar"></i></div></div>
+    </div>
+
+    <!-- B · cloud -->
+    <div class="at" id="cloudwrap" style="left:3300px;top:540px;width:560px;height:560px">
+      <svg viewBox="0 0 64 64" width="560" height="560" style="overflow:visible">
+        <defs><filter id="cg" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.6"/></filter></defs>
+        <g fill="none" stroke="#7fc0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#cg)" opacity=".7" id="lgGlow">
+          <rect x="14" y="14" width="36" height="36" rx="7"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z"/></g>
+        <g fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="lgDraw">
+          <rect id="lgChip" x="14" y="14" width="36" height="36" rx="7" pathLength="1"/>
+          <path id="lgPins" d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="1.5" pathLength="1"/>
+          <path id="lgCloud" d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="1.5" pathLength="1"/></g>
+      </svg>
+    </div>
+    <div id="codes"></div>
+    <div class="at glass fw" id="fw" style="left:3300px;top:880px">
+      <div class="row"><span>sketch.hex</span><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></div>
+      <div class="row mono"><span>924 bytes · avr-gcc</span><span>SHA-256 9f3a…c21b</span></div>
+    </div>
+
+    <!-- C · the PC -->
+    <div class="at" id="mon" style="left:5700px;top:640px">
+      <div id="screen">
+        <div id="side"><div class="brand"><svg width="38" height="38" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#007aff"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>MCU Bridge</div>
+          <div class="nav on"></div><div class="nav"></div><div class="nav"></div></div>
+        <div id="main">
+          <div class="h1">Devices</div>
+          <div class="dev"><div class="ic">UNO</div><div class="t"><b>Arduino Uno</b><span id="devline">COM5 · ready</span></div><div class="st" id="devst"><i class="dot"></i>Connected</div></div>
+          <div class="bar" style="width:100%;margin-top:6px;height:14px"><i id="pbar"></i></div>
+          <div id="log"><div class="ll">→ handshake with bootloader</div><div class="ll">→ erase  ·  write 924 B</div><div class="ll">→ verify read-back</div><div class="ll okl">✓ flash confirmed by desktop app</div></div>
+        </div>
+        <div class="toast" id="toast"><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Firmware received</b><span>sha256 verified · 924 B</span></div></div>
+      </div>
+    </div>
+
+    <!-- D · the board -->
+    <div class="at" id="board" style="left:8000px;top:600px;width:1100px;height:754px">
+      <svg viewBox="0 0 700 480" width="1100" height="754" style="overflow:visible">
+        <defs>
+          <linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00a3a9"/><stop offset="1" stop-color="#006870"/></linearGradient>
+          <linearGradient id="usb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9eef5"/><stop offset=".5" stop-color="#aab4c2"/><stop offset="1" stop-color="#7e8a9a"/></linearGradient>
+          <linearGradient id="chipg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2f3a"/><stop offset="1" stop-color="#0d1017"/></linearGradient>
+          <filter id="sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#000" flood-opacity=".6"/></filter>
+        </defs>
+        <g filter="url(#sh)">
+          <rect x="70" y="60" width="560" height="360" rx="26" fill="url(#pcb)"/>
+          <rect x="70" y="60" width="560" height="360" rx="26" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="2"/>
+          <!-- usb -->
+          <rect x="22" y="150" width="120" height="120" rx="8" fill="url(#usb)"/><rect x="36" y="164" width="92" height="92" rx="4" fill="#5b6572" opacity=".55"/>
+          <!-- power jack -->
+          <rect x="30" y="318" width="108" height="86" rx="8" fill="#16181e"/>
+          <!-- headers -->
+          <rect x="200" y="74" width="330" height="30" rx="5" fill="#15171d"/><rect x="200" y="376" width="360" height="30" rx="5" fill="#15171d"/>
+          <g fill="#3b4150" id="pins"></g>
+          <!-- chip -->
+          <rect x="290" y="190" width="200" height="86" rx="6" fill="url(#chipg)"/><circle cx="306" cy="206" r="5" fill="#3b4150"/>
+          <text x="390" y="242" fill="#8c95a8" font-family="Geist Mono" font-size="17" text-anchor="middle">ATMEGA328P</text>
+          <g fill="#aeb6c4" id="chipPins"></g>
+          <!-- crystal, reset -->
+          <rect x="200" y="215" width="54" height="26" rx="13" fill="#c7ced9"/><circle cx="170" cy="100" r="17" fill="#d6303b"/><circle cx="170" cy="100" r="9" fill="#ff6a73"/>
+          <!-- LEDs -->
+          <rect x="548" y="150" width="30" height="16" rx="3" fill="#7a4f12"/><rect x="548" y="190" width="30" height="16" rx="3" fill="#7a4f12"/>
+          <rect x="548" y="230" width="30" height="16" rx="3" fill="#0e5a2c" id="onled"/>
+          <rect x="548" y="270" width="30" height="16" rx="3" fill="#7a4f12" id="Lled"/>
+          <g font-family="Geist Mono" font-size="14" fill="rgba(255,255,255,.8)"><text x="590" y="163">TX</text><text x="590" y="203">RX</text><text x="590" y="243">ON</text><text x="590" y="283">L</text></g>
+          <text x="300" y="326" fill="#fff" font-family="Geist" font-weight="600" font-size="44" letter-spacing="2">UNO</text>
+        </g>
+      </svg>
+      <div id="ledGlow" style="position:absolute;left:884px;top:437px;width:260px;height:260px;margin:-130px 0 0 -130px;border-radius:50%;background:radial-gradient(circle,rgba(255,196,64,.95) 0%,rgba(255,150,30,.55) 28%,rgba(255,120,0,0) 70%);opacity:0;mix-blend-mode:screen"></div>
+      <div id="ledCore" style="position:absolute;left:884px;top:437px;width:48px;height:26px;margin:-13px 0 0 -24px;border-radius:7px;background:#ffd45a;box-shadow:0 0 46px 16px #ffb02e;opacity:0"></div>
+      <div id="flashStat" class="glass" style="position:absolute;left:550px;top:730px;margin-left:-190px;padding:20px 32px;border-radius:28px;display:flex;gap:18px;align-items:center;font-size:34px;font-weight:600;opacity:0"><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Flashed &amp; verified</div>
+    </div>
+    <div id="cable"></div>
+  </div>
+
+  <div id="words"></div>
+  <div class="vig"></div>
+  <svg id="grain" width="2120" height="1280"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.1 -.2"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+
+  <div id="finale">
+    <i class="fb" style="left:-300px;top:-380px;width:1100px;height:1100px;background:radial-gradient(circle,#6cc4ff,rgba(108,196,255,0) 68%);opacity:.55"></i>
+    <i class="fb" style="left:1150px;top:520px;width:1000px;height:1000px;background:radial-gradient(circle,#3a6bff,rgba(58,107,255,0) 68%);opacity:.5"></i>
+    <i class="ring" id="ring"></i>
+    <svg class="lg" id="lg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#007aff" stroke="rgba(255,255,255,.35)" stroke-width=".6"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>
+    <div id="wm">MCU Bridge</div>
+    <div id="tag">Your AI, <em>hands on</em> hardware</div>
+    <div id="chips"><span class="pill">ESP32</span><span class="pill">Arduino Uno · Nano · Mega</span><span class="pill">Works in any AI chat</span></div>
+  </div>
+  <div id="flash"></div>
+</div>
+<audio id="aud" src="out/sfx.wav" preload="auto"></audio>
+<div id="hint">Click to play with sound</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const DUR=34;
+const SFX=[];                                   // sound-effect cues, rendered to sfx.wav by tools/make_sfx.py
+const cue=(t,type,o={})=>SFX.push({t,type,...o});
+window.__sfx=SFX;
+
+/* ---------------------------------------------------------------- stage fit */
+const stage=$('#stage');
+const fit=()=>{const s=Math.min(innerWidth/1920,innerHeight/1080);stage.style.transform=`translate(-50%,-50%) scale(${s})`;};
+addEventListener('resize',fit);fit();
+
+/* ---------------------------------------------------------------- helpers */
+const tl=gsap.timeline({paused:true});
+const world=$('#world');
+const cam={cx:1000,cy:505,s:1.42};
+const blobs=[...document.querySelectorAll('.blob')];
+function applyCam(){
+  world.style.transform=`translate(${960-cam.cx*cam.s}px,${540-cam.cy*cam.s}px) scale(${cam.s})`;
+  blobs.forEach((b,i)=>{const k=[.05,.09,.13][i];b.style.transform=`translate(${-cam.cx*k}px,${(cam.s-1)*-80*(i+1)}px)`;});
+}
+applyCam();
+const camTo=(at,dur,{cx,cy,s,ease='power3.inOut',dip=null})=>{
+  tl.to(cam,{cx,cy,duration:dur,ease,onUpdate:applyCam},at);
+  if(dip!=null){tl.to(cam,{s:dip,duration:dur*.5,ease:'sine.inOut',onUpdate:applyCam},at);tl.to(cam,{s,duration:dur*.5,ease:'sine.inOut',onUpdate:applyCam},at+dur*.5);}
+  else tl.to(cam,{s,duration:dur,ease,onUpdate:applyCam},at);
+};
+const defs=(()=>{const n='http://www.w3.org/2000/svg';const s=document.createElementNS(n,'svg');s.style.cssText='position:fixed;width:0;height:0';s.innerHTML='<defs></defs>';document.body.appendChild(s);return s.firstChild;})();
+let fc=0;
+function blurTween(targets,at,from,to,dur,ax=1,ay=.08,ease='power3.out'){
+  const id='mb'+(fc++),n='http://www.w3.org/2000/svg';const f=document.createElementNS(n,'filter');f.id=id;
+  f.setAttribute('x','-70%');f.setAttribute('y','-70%');f.setAttribute('width','240%');f.setAttribute('height','240%');
+  const g=document.createElementNS(n,'feGaussianBlur');g.setAttribute('stdDeviation','0 0');f.appendChild(g);defs.appendChild(f);
+  const o={v:from};tl.set(targets,{filter:`url(#${id})`},at);
+  tl.to(o,{v:to,duration:dur,ease,onUpdate(){g.setAttribute('stdDeviation',`${(o.v*ax).toFixed(2)} ${(o.v*ay).toFixed(2)}`);}},at);
+  tl.set(targets,{filter:'none'},at+dur);
+}
+function words(html,{x,y,size,align='left',cls=''}){
+  const el=document.createElement('div');el.className='st1 '+cls;el.style.cssText=`left:${x}px;top:${y}px;font-size:${size}px;${align==='center'?'transform:translateX(-50%);':''}`;el.innerHTML=html;$('#words').appendChild(el);
+  // split text nodes into words/chars
+  const chars=[];
+  const walk=n=>{[...n.childNodes].forEach(c=>{
+    if(c.nodeType===3){const frag=document.createDocumentFragment();c.textContent.split(/(\s+)/).forEach(w=>{
+      if(/^\s+$/.test(w)){const sp=document.createElement('span');sp.className='ch';sp.innerHTML='&nbsp;';frag.appendChild(sp);chars.push(sp);}
+      else if(w){const wd=document.createElement('span');wd.className='wd';[...w].forEach(ch=>{const s=document.createElement('span');s.className='ch';s.textContent=ch;wd.appendChild(s);chars.push(s);});frag.appendChild(wd);}});
+      c.replaceWith(frag);} else if(c.nodeType===1){ if(c.tagName==='EM'){const t=c.textContent;c.textContent='';const wd=document.createElement('span');wd.className='wd';[...t].forEach(ch=>{const s=document.createElement('span');s.className='ch';s.innerHTML=ch===' '?'&nbsp;':ch;wd.appendChild(s);chars.push(s);});c.appendChild(wd);} else walk(c);} });};
+  walk(el);return {el,chars};
+}
+const inUp=(w,at,{dur=.85,st=.022}={})=>{tl.set(w.el,{opacity:1},at);tl.fromTo(w.chars,{opacity:0,yPercent:62,scaleY:1.4},{opacity:1,yPercent:0,scaleY:1,duration:dur,ease:'power4.out',stagger:st,immediateRender:false},at);blurTween(w.el,at,26,0,dur,.1,1);};
+const inRight=(w,at,{dur=.8,st=.02}={})=>{tl.set(w.el,{opacity:1},at);tl.fromTo(w.chars,{opacity:0,xPercent:50},{opacity:1,xPercent:0,duration:dur,ease:'power4.out',stagger:{each:st,from:'end'},immediateRender:false},at);blurTween(w.el,at,44,0,dur,1,.08);};
+const inWordsP=(w,at,{dur=.7,st:stg=.12}={})=>{tl.set(w.el,{opacity:1},at);const wd=w.el.querySelectorAll('.wd');tl.set(w.chars,{opacity:1},at);tl.fromTo(wd,{opacity:0,yPercent:45,rotateX:-60},{opacity:1,yPercent:0,rotateX:0,duration:dur,ease:'back.out(1.5)',stagger:stg,immediateRender:false},at);};
+const inMask=(w,at,{dur=1,from='left'}={})=>{tl.set(w.el,{opacity:1},at);tl.set(w.chars,{opacity:1},at);const c={left:'inset(-20% 100% -20% 0)',right:'inset(-20% 0 -20% 100%)'}[from];tl.fromTo(w.el,{clipPath:c},{clipPath:'inset(-20% 0 -20% 0)',duration:dur,ease:'power3.inOut',immediateRender:false},at);tl.set(w.el,{clipPath:'none'},at+dur);};
+const outUp=(w,at,{dur=.45,st=.01}={})=>{tl.to(w.chars,{opacity:0,yPercent:-70,duration:dur,ease:'power2.in',stagger:st},at);blurTween(w.el,at,0,36,dur+.1,.1,1,'power2.in');};
+const outLeft=(w,at,{dur=.45,st=.01}={})=>{tl.to(w.chars,{opacity:0,xPercent:-60,duration:dur,ease:'power2.in',stagger:st},at);blurTween(w.el,at,0,50,dur+.1,1,.08,'power2.in');};
+const outDown=(w,at,{dur=.45,st=.01}={})=>{tl.to(w.chars,{opacity:0,yPercent:70,duration:dur,ease:'power2.in',stagger:st},at);blurTween(w.el,at,0,36,dur+.1,.1,1,'power2.in');};
+
+/* ---------------------------------------------------------------- route + orbs */
+const route=$('#route'),total=route.getTotalLength();
+const lenAtX=x=>{let lo=0,hi=total;for(let i=0;i<40;i++){const m=(lo+hi)/2;route.getPointAtLength(m).x<x?lo=m:hi=m;}return (lo+hi)/2;};
+const L={A:lenAtX(1000),B:lenAtX(3300),C:lenAtX(5700),D:lenAtX(8000)};
+const orbsEl=$('#orbs');const ORBS=[];
+for(let i=0;i<8;i++){const d=document.createElement('i');d.style.cssText=`position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;opacity:0;mix-blend-mode:screen;width:${i===0?64:36-i*3}px;height:${i===0?64:36-i*3}px;margin:${i===0?-32:-(18-i*1.5)}px 0 0 ${i===0?-32:-(18-i*1.5)}px;background:radial-gradient(circle,#fff 0%,#7fd0ff 30%,rgba(10,132,255,0) 72%)`;orbsEl.appendChild(d);ORBS.push(d);}
+const pk={p:L.A,o:0};        // packet position along the route (px) and opacity
+const dash={t:0};
+const cableT={t:0,o:0};
+const fx=()=>{
+  $('#beamDash').style.strokeDashoffset=-(dash.t*180);
+  ORBS.forEach((d,i)=>{const l=pk.p-i*34;if(l<0||pk.o<=0){d.style.opacity=0;return;}const pt=route.getPointAtLength(l);d.style.transform=`translate(${pt.x}px,${pt.y}px)`;d.style.opacity=pk.o*(i===0?1:Math.max(0,.8-i*.1));});
+  // cable pulses (board scene)
+  const cab=$('#cableBox');
+  if(cab){[...cab.children].forEach((p,i)=>{const u=((cableT.t*1.6+i*.17)%1);p.style.left=(u*100)+'%';p.style.opacity=cableT.o*Math.sin(u*Math.PI);});}
+  // grain flicker (deterministic: steps of 1/24 s)
+  const g=Math.floor(tl.time()*24);$('#grain').style.transform=`translate(${-((g*37)%90)}px,${-((g*53)%90)}px)`;
+};
+tl.to(dash,{t:DUR,duration:DUR,ease:'none',onUpdate:fx},0);
+
+/* cable (to the board) built inside the world */
+{const c=document.createElement('div');c.id='cable';c.style.cssText='position:absolute;left:6330px;top:530px;width:1160px;height:46px;';
+ c.innerHTML='<div style="position:absolute;left:0;top:10px;right:0;height:26px;border-radius:13px;background:linear-gradient(180deg,#232a3b,#0b0f1a);box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18)"></div><div id="cableBox" style="position:absolute;left:0;right:0;top:19px;height:8px">'+Array.from({length:6},()=>'<i style="position:absolute;top:-6px;width:90px;height:20px;margin-left:-45px;border-radius:10px;background:radial-gradient(ellipse,#bfe6ff 0%,#3fb0ff 35%,rgba(10,132,255,0) 75%);opacity:0"></i>').join('')+'</div>';
+ $('#cable').replaceWith(c);}
+// pins on the board
+{const g=$('#pins'),cp=$('#chipPins');let h='';for(let i=0;i<10;i++){h+=`<rect x="${208+i*17.5}" y="82" width="9" height="14" rx="1.5"/>`;}for(let i=0;i<8;i++){h+=`<rect x="${208+i*17.5}" y="384" width="9" height="14" rx="1.5"/>`;}for(let i=0;i<6;i++){h+=`<rect x="${420+i*17.5}" y="384" width="9" height="14" rx="1.5"/>`;}g.innerHTML=h;
+ let c='';for(let i=0;i<14;i++){c+=`<rect x="${296+i*13.5}" y="182" width="7" height="8"/><rect x="${296+i*13.5}" y="276" width="7" height="8"/>`;}cp.innerHTML=c;}
+
+/* ---------------------------------------------------------------- initial states */
+tl.set(['#chat','#m1','#m2','#cloudwrap','#fw','#mon','#board','#toast','#cable'],{opacity:0},0);
+tl.set('#flashStat',{opacity:0},0);
+tl.set('#cbar',{width:'0%'},0);tl.set('#pbar',{width:'0%'},0);
+tl.set(['#lgChip','#lgPins','#lgCloud'],{strokeDasharray:1,strokeDashoffset:1},0);
+tl.set('#lgGlow',{opacity:0},0);
+tl.set('#bg1',{},0);
+tl.set(['#beamGlow','#beamDash'],{opacity:0},0);
+
+/* ================================================================ RUNDOWN ================================================================
+   0.0  void + glow wakes                              17.0 → PC: packet arrives, toast, progress 100 %
+   0.8  A: chat opens, prompt typed                    21.4 → dive to board, cable pulses, flashing
+   3.9  reply + tool badge + compile bar               24.6  LED blinks ×4 (the payoff)
+   6.6  whip along the beam to B (cloud)               28.6  push-through the LED glow → whiteout
+   8.2  B: chip + cloud assemble, code flies in        29.2  finale: logo, MCU Bridge, tagline, chips
+  11.6  firmware card forms                            34.0  end (loops)
+  14.0  whip to C
+============================================================================================================================================ */
+
+/* ---- 0 · wake */
+tl.fromTo('.bg',{opacity:0},{opacity:1,duration:1.6,ease:'sine.out',immediateRender:false},0);
+tl.fromTo('.vig',{opacity:0},{opacity:1,duration:1.4,immediateRender:false},0);
+cue(0.0,'pad',{dur:34});
+cue(0.45,'riser',{dur:1.1,lo:180,hi:900,amp:.35});
+
+/* ---- A · chat */
+const sA=words('Just <em>ask</em> your AI',{x:130,y:92,size:104});
+camTo(0.2,6.4,{cx:1000,cy:505,s:1.5,ease:'sine.inOut'});
+tl.set('#chat',{opacity:1},.9);
+tl.fromTo('#chat',{scale:.9,yPercent:-46,xPercent:-50,opacity:0,filter:'blur(14px)'},{scale:1,yPercent:-50,xPercent:-50,opacity:1,filter:'blur(0px)',duration:1.1,ease:'expo.out',immediateRender:false},.9);
+cue(.95,'pop');
+inUp(sA,1.0);
+tl.set('#m1',{opacity:1},1.5);
+const m1t=$('#m1t'),P='Blink the LED on my Arduino Uno',o1={i:0};
+tl.fromTo(o1,{i:0},{i:P.length,duration:1.9,ease:'none',immediateRender:false,onUpdate(){m1t.textContent=P.slice(0,Math.round(o1.i));}},1.7);
+for(let i=0;i<P.length;i++) cue(1.7+(1.9*i/P.length),'tick',{v:i%3});
+tl.fromTo('#m1',{y:20,scale:.96},{y:0,scale:1,duration:.5,ease:'back.out(1.6)',immediateRender:false},1.5);
+tl.set('#car',{opacity:0},3.65);
+tl.set('#m2',{opacity:1},4.0);
+tl.fromTo('#m2',{y:24,scale:.96,opacity:0},{y:0,scale:1,opacity:1,duration:.55,ease:'back.out(1.5)',immediateRender:false},4.0);
+cue(4.02,'pop',{hi:1});
+tl.to('#cbar',{width:'100%',duration:2.2,ease:'power1.inOut'},4.35);
+cue(4.35,'stream',{dur:2.2});
+outUp(sA,6.0);
+
+/* ---- A → B : whip along the beam */
+tl.to('#beamGlow',{opacity:.55,duration:.8},6.0);tl.to('#beamDash',{opacity:1,duration:.8},6.0);
+camTo(6.5,2.2,{cx:3300,cy:560,s:1.12,dip:.62});
+cue(6.5,'whoosh',{dur:2.0});
+tl.fromTo(pk,{p:L.A,o:0},{p:L.B-120,o:1,duration:1.9,ease:'power2.inOut',immediateRender:false},6.6);
+tl.to('#chat',{xPercent:-80,opacity:.0,duration:1.4,ease:'power2.in'},6.5);
+
+/* ---- B · cloud: the chip + cloud mark assembles, code flies in */
+const sB=words('It builds in <em>the cloud</em>',{x:960,y:70,size:104,align:'center'});
+inMask(sB,8.0,{dur:1.0});
+tl.set('#cloudwrap',{opacity:1},8.1);
+tl.fromTo('#cloudwrap',{scale:.8},{scale:1,duration:1.6,ease:'expo.out',immediateRender:false},8.1);
+tl.to('#lgChip',{strokeDashoffset:0,duration:.9,ease:'power2.inOut'},8.2);
+tl.to('#lgPins',{strokeDashoffset:0,duration:.9,ease:'power2.inOut'},8.55);
+tl.to('#lgCloud',{strokeDashoffset:0,duration:.9,ease:'power2.inOut'},8.9);
+tl.to('#lgGlow',{opacity:.9,duration:1.2,ease:'sine.inOut'},9.3);
+cue(8.2,'draw',{dur:1.6});
+const CODE=['void setup() {','  pinMode(13, OUTPUT);','}','void loop() {','  digitalWrite(13, HIGH);','  delay(500);'];
+const codes=$('#codes');
+CODE.forEach((ln,i)=>{const d=document.createElement('div');d.className='codeln';d.textContent=ln;d.style.cssText=`left:${2420+(i%2)*30}px;top:${300+i*64}px`;codes.appendChild(d);
+  const t0=9.3+i*.22;
+  tl.fromTo(d,{opacity:0,x:-60,scale:1},{opacity:1,x:0,duration:.35,ease:'power3.out',immediateRender:false},t0);
+  tl.to(d,{x:830-(i%2)*30,y:(540-(300+i*64)),scale:.3,opacity:0,duration:.75,ease:'power3.in'},t0+.55);
+  cue(t0+.55,'tick',{v:i%3,hi:1});
+});
+tl.fromTo('#cloudwrap',{filter:'drop-shadow(0 0 0px rgba(10,132,255,0))'},{filter:'drop-shadow(0 0 60px rgba(10,132,255,.9))',duration:.6,ease:'sine.inOut',yoyo:true,repeat:1,immediateRender:false},10.9);
+tl.set('#fw',{opacity:1},11.7);
+tl.fromTo('#fw',{y:50,scale:.9,opacity:0,filter:'blur(12px)'},{y:0,scale:1,opacity:1,filter:'blur(0px)',duration:.9,ease:'expo.out',immediateRender:false},11.7);
+cue(11.75,'chime');
+outLeft(sB,13.0);
+
+/* ---- B → C : beam to the PC */
+camTo(13.7,2.4,{cx:5700,cy:600,s:1.0,dip:.6});
+cue(13.7,'whoosh',{dur:2.2});
+tl.fromTo(pk,{p:L.B+60,o:0},{p:L.C-160,o:1,duration:2.1,ease:'power2.inOut',immediateRender:false},13.9);
+tl.to('#cloudwrap',{xPercent:-12,duration:2,ease:'power2.in'},13.7);
+
+/* ---- C · the PC */
+const sC=words('Straight to <em>your PC</em>',{x:1800,y:96,size:104,align:'right'});
+sC.el.style.transform='translateX(-100%)';
+inRight(sC,15.6);
+tl.set('#mon',{opacity:1},15.7);
+tl.fromTo('#mon',{scale:.88,opacity:0,filter:'blur(16px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:1.1,ease:'expo.out',immediateRender:false},15.7);
+cue(15.85,'pop');
+tl.fromTo(pk,{o:1},{o:0,duration:.4,ease:'sine.in',immediateRender:false},16.0);
+tl.to('#pbar',{width:'100%',duration:1.8,ease:'power1.inOut'},16.4);
+cue(16.4,'stream',{dur:1.8});
+const dl=$('#devline'),dst=$('#devst');
+tl.call(()=>{dl.textContent='COM5 · receiving 924 B';},null,16.4);
+tl.call(()=>{dl.textContent='COM5 · ready';},null,0);
+tl.call(()=>{dl.textContent='COM5 · verified sha-256';dst.innerHTML='<i class="dot"></i>Verified';},null,18.3);
+tl.call(()=>{dl.textContent='COM5 · receiving 924 B';dst.innerHTML='<i class="dot"></i>Connected';},null,16.39);
+[16.5,17.0,17.6,18.4].forEach((t,i)=>tl.fromTo($$('.ll')[i],{opacity:0,x:-18},{opacity:1,x:0,duration:.35,ease:'power3.out',immediateRender:false},t));
+tl.set('#toast',{opacity:1},18.35);
+tl.fromTo('#toast',{y:40,scale:.94,opacity:0},{y:0,scale:1,opacity:1,duration:.6,ease:'back.out(1.5)',immediateRender:false},18.35);
+cue(18.4,'ding');
+outDown(sC,19.6);
+
+/* ---- C → D : down the USB cable */
+tl.set('#cable',{opacity:1},19.9);
+camTo(19.9,2.4,{cx:7300,cy:600,s:1.05,dip:.8});
+cue(19.9,'whoosh',{dur:2.2});
+tl.fromTo('#cable',{opacity:0},{opacity:1,duration:.6,immediateRender:false},19.9);
+tl.to(cableT,{o:1,duration:.5},20.6);
+tl.to(cableT,{t:6,duration:7.5,ease:'none',onUpdate:fx},20.6);
+tl.set('#board',{opacity:1},20.8);
+tl.fromTo('#board',{scale:.86,opacity:0,filter:'blur(18px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:1.4,ease:'expo.out',immediateRender:false},20.8);
+camTo(22.3,2.6,{cx:8000,cy:610,s:1.0,ease:'sine.inOut'});
+
+/* ---- D · the board comes alive */
+const sD=words('…and your board <em>comes alive</em>',{x:130,y:92,size:104});
+inUp(sD,22.0);
+cue(22.4,'riser',{dur:2.0,lo:140,hi:1100,amp:.45});
+// TX/RX frantic while flashing
+['#Lled'].forEach(()=>{});
+tl.fromTo('#flashStat',{opacity:0,y:24,scale:.94},{opacity:1,y:0,scale:1,duration:.7,ease:'back.out(1.5)',immediateRender:false},27.0);
+cue(27.05,'ding',{hi:1});
+// LED blinks, four times, on the beat
+const BL=[24.5,25.25,26.0,26.75];
+BL.forEach((t,i)=>{
+  tl.fromTo('#ledGlow',{opacity:0,scale:.5},{opacity:1,scale:1.15,duration:.11,ease:'power2.out',immediateRender:false},t);
+  tl.to('#ledGlow',{opacity:0,scale:.7,duration:.34,ease:'power2.in'},t+.11);
+  tl.fromTo('#ledCore',{opacity:0},{opacity:1,duration:.06,immediateRender:false},t);
+  tl.to('#ledCore',{opacity:0,duration:.3,ease:'power2.in'},t+.14);
+  tl.fromTo('#board',{scale:1},{scale:1.012+i*.003,duration:.12,ease:'power2.out',immediateRender:false},t);
+  tl.to('#board',{scale:1,duration:.3,ease:'power2.in'},t+.12);
+  cue(t,'blink',{v:i});
+});
+tl.to(cableT,{o:0,duration:.5},24.2);
+outLeft(sD,27.7);
+
+/* ---- push through the LED, whiteout, finale */
+cue(27.9,'riser',{dur:.9,lo:300,hi:2400,amp:.5});
+tl.call(()=>{},null,28.0);
+tl.to(cam,{cx:8334,cy:660,s:9,duration:1.0,ease:'power3.in',onUpdate:applyCam},27.9);
+tl.fromTo('#flash',{opacity:0},{opacity:1,duration:.55,ease:'power2.in',immediateRender:false},28.4);
+cue(28.9,'impact');
+tl.set('#finale',{autoAlpha:1},28.95);
+tl.set(['#world','#words','.vig'],{autoAlpha:0},28.96);
+tl.to('#flash',{opacity:0,duration:1.1,ease:'power2.out'},29.0);
+
+/* ---- finale */
+tl.fromTo('#lg',{opacity:0,scale:.55,y:30},{opacity:1,scale:1,y:0,duration:1.2,ease:'expo.out',immediateRender:false},29.15);
+tl.fromTo('#ring',{opacity:.9,scale:.7},{opacity:0,scale:3.4,duration:1.5,ease:'power2.out',immediateRender:false},29.15);
+cue(29.15,'sparkle');
+const wm=words('MCU Bridge',{x:0,y:0,size:132});wm.el.remove();
+// wordmark with the same char engine, but positioned by #wm
+{const el=$('#wm');const txt=el.textContent;el.textContent='';const chs=[];[...txt].forEach(c=>{const s=document.createElement('span');s.className='ch';s.innerHTML=c===' '?'&nbsp;':c;el.appendChild(s);chs.push(s);});
+ tl.fromTo(chs,{opacity:0,scale:2.2},{opacity:1,scale:1,duration:1.0,ease:'expo.out',stagger:{each:.03,from:'center'},immediateRender:false},29.45);blurTween(el,29.45,20,0,1.0,1,1,'expo.out');}
+{const el=$('#tag');const em=$('em',el);const w=[...el.childNodes];
+ tl.fromTo(el,{opacity:0,y:26,filter:'blur(10px)'},{opacity:1,y:0,filter:'blur(0px)',duration:1.0,ease:'power4.out',immediateRender:false},30.5);}
+tl.fromTo('#chips',{opacity:0,y:20},{opacity:1,y:0,duration:.9,ease:'power3.out',immediateRender:false},31.4);
+tl.fromTo('#finale .fb',{x:0},{x:60,duration:5,ease:'sine.inOut'},29);
+tl.fromTo('#finale',{scale:1.04},{scale:1,duration:5,ease:'sine.out'},29);
+cue(31.5,'shimmer');
+tl.to({},{duration:.01},DUR);
+
+/* ---------------------------------------------------------------- playback */
+const aud=$('#aud'),hint=$('#hint');
+const EXPORT=Q.has('export');
+window.seekTo=t=>{tl.pause();tl.seek(t,false);fx();applyCam();};
+window.DUR=DUR;
+if(!EXPORT){
+  const start=()=>{tl.timeScale(1);tl.play(0);aud.currentTime=0;aud.play().catch(()=>{});};
+  tl.eventCallback('onComplete',()=>{tl.play(0);aud.currentTime=0;aud.play().catch(()=>{});});
+  document.fonts.ready.then(()=>{
+    aud.play().then(()=>{aud.pause();aud.currentTime=0;tl.play(0);aud.play();}).catch(()=>{
+      tl.seek(1.6);tl.pause();hint.style.opacity=.9;
+      addEventListener('pointerdown',()=>{hint.style.opacity=0;start();},{once:true});
+      addEventListener('keydown',()=>{hint.style.opacity=0;start();},{once:true});
+    });
+  });
+  addEventListener('keydown',e=>{if(e.key==='r'||e.key==='R'){tl.play(0);aud.currentTime=0;aud.play().catch(()=>{});}if(e.code==='Space'){e.preventDefault();if(tl.paused()){tl.play();aud.play().catch(()=>{});}else{tl.pause();aud.pause();}}});
+  (function sync(){ if(!tl.paused()&&Math.abs(aud.currentTime-tl.time())>.12)aud.currentTime=tl.time(); requestAnimationFrame(sync);})();
+  if(Q.has('debug')){const r=document.createElement('input');r.type='range';r.min=0;r.max=DUR*100;r.style.cssText='position:fixed;left:20px;right:20px;bottom:10px;z-index:99';r.oninput=()=>{tl.pause();aud.pause();tl.seek(r.value/100);};document.body.appendChild(r);}
+}
+</script>
+</body>
+</html>

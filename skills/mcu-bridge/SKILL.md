@@ -21,6 +21,11 @@ Use `family`, `chip` and `missing` from `list_devices`/`get_device_info`. If a t
 *that device's family* — they install it with the Download button on the Tools page of the desktop app. Never reason about esptool for an Arduino
 or avrdude for an ESP32.
 
+## Boards can have names
+Users can name their boards in the web dashboard (Devices → click the name) or you can call `rename_device` when asked. `list_devices` shows `name`;
+refer to boards by that name and pass it as `device_id` anywhere (names are case-insensitive, unique per account). `build_and_flash` may omit `board`
+when the desktop app already auto-detected it (`identify_mcu` tries 115200 → 57600 → Mega and names the exact Uno / Nano / old-bootloader Nano / Mega).
+
 ## Hard rules
 1. **Never say firmware is flashed until `get_flash_job` returns `status: "completed"` with `flash_confirmed: true`.** Any other status means it is not flashed. Report the exact `error.code` and message.
 2. Never guess flash addresses, flash size, mode or frequency. Take them from your build output (ESP-IDF: `build/flasher_args.json`; PlatformIO: the board/partition settings; Arduino CLI: the build's `.bin`/`.hex` plus board config).
