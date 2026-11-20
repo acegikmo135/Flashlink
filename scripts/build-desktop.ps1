@@ -29,3 +29,11 @@ try {
   & $py build.py
 } finally { Pop-Location }
 Write-Host "`nBuilt: $desktop\dist\MCUBridge\MCUBridge.exe" -ForegroundColor Green
+
+# installer (optional: needs Inno Setup 6 -> winget install JRSoftware.InnoSetup)
+$iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+if (-not $iscc) { $c = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"; if (Test-Path $c) { $iscc = $c } }
+if ($iscc) {
+  & $iscc /Qp "/DAppVersion=0.1.0" (Join-Path $desktop 'installer\mcubridge.iss')
+  if ($LASTEXITCODE -eq 0) { Write-Host "Installer: $desktop\dist\MCUBridge-Setup.exe" -ForegroundColor Green }
+} else { Write-Host 'Inno Setup not found - skipped the installer (winget install JRSoftware.InnoSetup).' -ForegroundColor Yellow }

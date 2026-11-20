@@ -70,10 +70,81 @@ def run_headless(agent) -> int:
     return 0
 
 
+def selftest() -> int:
+    """Start the real UI offscreen, visit every page, and report timings as JSON (used by CI on the installed exe)."""
+    import json
+    import os
+    import time
+    import tempfile
+
+    t0 = time.perf_counter()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    home = tempfile.mkdtemp(prefix="mcub-selftest-")
+    os.environ["MCUBRIDGE_HOME"] = home
+    os.environ["MCUBRIDGE_SIMULATE"] = "1"
+    os.environ.setdefault("MCUBRIDGE_SERVER", "http://127.0.0.1:9")
+    from PySide6.QtWidgets import QApplication
+
+    from app.ui import theme
+    from app.ui.app import MainWindow
+
+    store, hw, agent = build_core()
+    t_import = time.perf_counter()
+    app = QApplication([])
+    app.setStyleSheet(theme.QSS)
+    agent.hw.scan()
+    win = MainWindow(agent, hw)
+    win.show()
+    app.processEvents()
+    t_window = time.perf_counter()
+    agent.state.connection = "connected"
+    agent.state.devices = [{**d.to_wire(), "label": d.label} for d in hw.scan()]
+    pages = []
+    for i, name in enumerate(win.SECTIONS):
+        ts = time.perf_counter()
+        win.go(i)
+        app.processEvents()
+        pages.append((name, round((time.perf_counter() - ts) * 1000)))
+    shots = os.environ.get("MCUB_SELFTEST_SHOTS")
+    if shots:
+        os.makedirs(shots, exist_ok=True)
+        for i, name in enumerate(win.SECTIONS):
+            win.go(i)
+            app.processEvents()
+            win.grab().save(os.path.join(shots, f"{i}-{name.lower()}.png"))
+    from app.hardware import tools
+    from app.core import toolinstall
+
+    result = {
+        "ok": True,
+        "import_ms": round((t_import - t0) * 1000),
+        "window_ms": round((t_window - t_import) * 1000),
+        "total_to_window_ms": round((t_window - t0) * 1000),
+        "pages_ms": dict(pages),
+        "tools": {n: t.available for n, t in tools.all_tools().items()},
+        "tools_manifest": sorted(toolinstall.load_manifest()),
+        "python": sys.version.split()[0],
+        "frozen": bool(getattr(sys, "frozen", False)),
+    }
+    out = os.environ.get("MCUB_SELFTEST_OUT")
+    if out:
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(result, f)
+    print(json.dumps(result), flush=True)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == "--tool":
         return _run_bundled_tool(argv[1:])
+    if argv and argv[0] == "--selftest":
+        return selftest()
+    if argv and argv[0] == "--version":
+        from app.core.config import APP_VERSION
+
+        print(APP_VERSION)
+        return 0
     ap = argparse.ArgumentParser(prog="mcubridge")
     ap.add_argument("--headless", action="store_true", help="run without UI")
     ap.add_argument("--simulate", action="store_true", help="virtual boards (development/CI only)")

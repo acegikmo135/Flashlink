@@ -39,16 +39,29 @@ HINTS = {
 }
 
 
-def _which(exe: str) -> str | None:
-    suffixes = [".exe", ""] if sys.platform == "win32" else [""]
-    for d in _search_dirs():
-        if not d.is_dir():
+def _find_in(d: Path, exe: str, depth: int = 4) -> str | None:
+    """Look for `exe` (with/without .exe) under d, at most `depth` levels deep."""
+    names = {exe, exe + ".exe"} if sys.platform == "win32" else {exe}
+    stack = [(d, 0)]
+    while stack:
+        cur, lvl = stack.pop()
+        try:
+            for entry in cur.iterdir():
+                if entry.is_file() and entry.name in names:
+                    return str(entry)
+                if entry.is_dir() and lvl < depth and not entry.name.startswith("."):
+                    stack.append((entry, lvl + 1))
+        except OSError:
             continue
-        for cand in [d / exe, *d.glob(f"*/{exe}"), *d.glob(f"*/bin/{exe}")]:
-            for s in suffixes:
-                p = Path(str(cand) + s) if s else cand
-                if p.is_file():
-                    return str(p)
+    return None
+
+
+def _which(exe: str) -> str | None:
+    for d in _search_dirs():
+        if d.is_dir():
+            hit = _find_in(d, exe)
+            if hit:
+                return hit
     return shutil.which(exe)
 
 

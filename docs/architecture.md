@@ -19,6 +19,8 @@ no port forwarding, no tunnel.
 | `durable-objects/user-hub.ts` | One per account. Hibernatable WebSockets for agents, device registry, job state machine, command routing (`read_serial`, `reset`, `identify`, …), alarm-based expiry/stale detection. |
 | `durable-objects/transfer-relay.ts` | One per job. **In-memory** sliding window (16 × 64 KiB per file) between the uploader and the agent. Never touches storage. |
 | `mcp/server.ts` | 14 MCP tools (SDK `McpServer`, stateless Streamable HTTP, strict zod input schemas, structured output). |
+| `auth/web.ts`, `auth/account.ts`, `auth/agent-account.ts` | JSON API for the web app (`/api/web/*`) and for the desktop app's Account page (`/api/agent/account…`, device credential). Shared account logic. |
+| `web/` (repo root) | React + Tailwind + shadcn/ui SPA built by Vite into `web/dist`, served through the Worker's `ASSETS` binding (`run_worker_first`), with CSP and SPA fallback. |
 | `auth/` | Account sign-up/login (PBKDF2-SHA256, session cookie), device pairing, token auth. |
 | `jobs/manifest.ts` | Strict manifest validation (mirrored in Python, tested against shared vectors). |
 | D1 | `users`, `web_sessions`, `pairings`, `agents`, `mcp_tokens`, `jobs`, `rate_limits` — metadata only. |

@@ -24,15 +24,24 @@ Open `<worker-url>/signup` → create an account with the invite code → on the
 
 ## 3. Install the Windows app
 
-Option A — build locally (Python 3.12): `.\scripts\build-desktop.ps1` → `desktop\dist\MCUBridge\MCUBridge.exe`
-(or unzip `MCUBridge-win64.zip`). Option B — download `MCUBridge-win64` from the GitHub Actions run.
+Download **MCUBridge-Setup.exe** (GitHub release `desktop-latest`, or the CI artifact) and run it. It is a per-user installer:
+no administrator rights, installs to `%LOCALAPPDATA%\Programs\MCU Bridge`, adds a Start-menu entry, and optionally
+starts with Windows. (Unsigned build: SmartScreen may show "More info → Run anyway".) A portable `MCUBridge-win64.zip`
+is published next to it. To build it yourself: `.\scripts\build-desktop.ps1` (PyInstaller; Inno Setup 6 for the installer).
 
 First start shows the pairing screen: open the link (or scan the QR code), sign in, compare the code, **Approve**. The app stores
-a revocable credential (DPAPI) and reconnects automatically from then on. Settings → *Start with Windows* is optional.
+a revocable credential (DPAPI) and reconnects automatically from then on.
 
-Optional tools (only for the families you use) go in `tools\` next to the exe — see `tools\README.txt`. ESP32/ESP8266 work out of the box.
-USB drivers: CP210x / CH340 / FTDI bridges need their usual Windows drivers (Windows Update installs most); ST-Link needs the
-ST-Link driver; WCH-LinkE needs the WCH driver.
+**Desktop app sections:** *Overview* (boards, live state) · *Activity* (progress for transfer / flashing / verification, errors,
+history) · *Tools* · *Account* · *Settings*.
+
+**Tools.** ESP32/ESP8266 work out of the box (esptool is built in). For other families open **Tools**: a missing tool shows a
+**Download** button — avrdude 8.0 and OpenOCD 0.12.0-7 are fetched from their official releases, verified against a pinned
+SHA-256 and unpacked into `%APPDATA%\MCUBridge\tools`. STM32CubeProgrammer (needs an ST account) and `wlink` open their
+vendor page (**Get…**). USB drivers (CP210x / CH340 / FTDI / ST-Link / WCH-Link) come from Windows Update or the vendor.
+
+**Account (in the app).** See your computers, create/revoke access tokens, disconnect connected apps (OAuth), open the web
+dashboard, or disconnect this PC.
 
 ## 4a. Add as a claude.ai connector (recommended — OAuth, no token to copy)
 

@@ -11,7 +11,8 @@ Claude Code Cloud ──MCP──▶ Cloudflare Worker (Durable Objects + D1) �
 
 * **Cloud:** Cloudflare Workers + Durable Objects + D1 (metadata only). No R2, KV, Firebase or Supabase. Firmware exists only
   in a bounded in-memory window while it streams, and is deleted from the PC after the job.
-* **Desktop:** Python + PySide6 (no Electron/WebEngine/Node/WSL/Docker). Outbound WebSocket only: no localhost server, no port forwarding.
+* **Desktop:** Python + PySide6 (no Electron/WebEngine/Node/WSL/Docker), per-user Inno Setup installer, tool downloader with pinned SHA-256s. Outbound WebSocket only: no localhost server, no port forwarding.
+* **Web:** React + Tailwind + shadcn/ui single-page app served by the Worker (Workers Static Assets): sign-in, dashboard, access tokens, connected apps, pairing approval and the OAuth consent screen.
 * **MCP:** Streamable HTTP at `/mcp`, 14 tools with strict schemas and structured output.
 * **Auth:** MCP supports OAuth 2.1 (add the URL as a claude.ai custom connector) or static Bearer tokens. Wrangler OAuth is for *you, the deployer*; a separate application-level pairing flow (link + QR + code) for the desktop.
 
@@ -19,7 +20,7 @@ Claude Code Cloud ──MCP──▶ Cloudflare Worker (Durable Objects + D1) �
 
 ```powershell
 .\scripts\setup.ps1            # deploy the cloud (logs in with Wrangler, creates D1, deploys, prints invite code)
-.\scripts\build-desktop.ps1    # build MCUBridge.exe (Python 3.12)
+.\scripts\build-desktop.ps1    # build MCUBridge.exe + MCUBridge-Setup.exe (Python 3.12, Inno Setup 6)
 ```
 
 Then sign up at `<worker>/signup`, create an MCP token on the dashboard, run `MCUBridge.exe`, approve the pairing link, and

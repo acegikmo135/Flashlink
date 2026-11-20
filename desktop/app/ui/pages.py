@@ -243,6 +243,7 @@ class SerialBridge(QObject):
 
 class DevicePage(QWidget):
     back = Signal()
+    open_tools = Signal()
 
     def __init__(self, agent: Agent, hw: HardwareManager) -> None:
         super().__init__()
@@ -288,6 +289,11 @@ class DevicePage(QWidget):
         self.reset = QPushButton("Reset")
         self.reset.clicked.connect(lambda: self._cmd("reset"))
         actions.addWidget(self.allow)
+        self.get_tools = QPushButton("Install missing tools…")
+        self.get_tools.setObjectName("primary")
+        self.get_tools.clicked.connect(self.open_tools.emit)
+        self.get_tools.hide()
+        actions.addWidget(self.get_tools)
         actions.addStretch(1)
         self.result = label("", "dim")
         actions.addWidget(self.result)
@@ -358,6 +364,7 @@ class DevicePage(QWidget):
         self.allow.setChecked(d["allowed"])
         self.allow.setEnabled(d["supported"])
         self.allow.blockSignals(False)
+        self.get_tools.setVisible(bool(d["missing"]))
         busy = bool(self.hw.busy.get(d["id"]))
         self.ident.setEnabled(not busy and d["supported"])
         self.reset.setEnabled(not busy and "reset" in d["capabilities"])
@@ -569,8 +576,6 @@ class ActivityPage(QWidget):
 # ----------------------------------------------------------------- settings
 
 class SettingsPage(QWidget):
-    revoked = Signal()
-
     def __init__(self, agent: Agent, hw: HardwareManager, apply_autostart) -> None:
         super().__init__()
         self.agent, self.hw, self.apply_autostart = agent, hw, apply_autostart
@@ -580,22 +585,6 @@ class SettingsPage(QWidget):
         lay.setContentsMargins(36, 30, 36, 24)
         lay.setSpacing(12)
         lay.addWidget(label("Settings", "h1"))
-
-        lay.addWidget(label("ACCOUNT & PAIRING", "h2"))
-        fr, fl = card()
-        self.acct = label("", None)
-        fl.addWidget(self.acct)
-        self.srv = label("", "mono")
-        fl.addWidget(self.srv)
-        fl.addWidget(label("This desktop holds a revocable, device-specific credential (Windows DPAPI). Revoking disconnects it immediately and requires pairing again.", "dim", wrap=True))
-        rb = QHBoxLayout()
-        rb.addStretch(1)
-        self.revoke = QPushButton("Disconnect and revoke this device")
-        self.revoke.setObjectName("danger")
-        self.revoke.clicked.connect(self._revoke)
-        rb.addWidget(self.revoke)
-        fl.addLayout(rb)
-        lay.addWidget(fr)
 
         lay.addWidget(label("STARTUP", "h2"))
         fr, fl = card()
@@ -620,7 +609,7 @@ class SettingsPage(QWidget):
         self.policy.currentIndexChanged.connect(lambda i: self._set("trust_policy", "auto" if i == 0 else "manual"))
         row.addWidget(self.policy)
         fl.addLayout(row)
-        fl.addWidget(label("Only the device-specific allow switch lets the cloud flash a board. Claude can never run commands or touch files on this PC — only the fixed flash / verify / reset / serial operations.", "dim", wrap=True))
+        fl.addWidget(label("Only the per-device allow switch lets the cloud flash a board. Claude can never run commands or touch files on this PC — only the fixed flash / verify / reset / serial operations.", "dim", wrap=True))
         lay.addWidget(fr)
 
         lay.addWidget(label("RECONNECTION", "h2"))
@@ -640,30 +629,15 @@ class SettingsPage(QWidget):
         fl.addWidget(label("Reconnects automatically with exponential backoff after network outages.", "dim"))
         lay.addWidget(fr)
 
-        lay.addWidget(label("TOOLCHAIN", "h2"))
-        fr, fl = card()
-        self.tools_lbl = label("", "mono", wrap=True)
-        fl.addWidget(self.tools_lbl)
-        tb = QHBoxLayout()
-        rescan = QPushButton("Re-check tools")
-        rescan.clicked.connect(self._recheck)
-        opent = QPushButton("Open tools folder")
-        opent.clicked.connect(self._open_tools)
-        tb.addWidget(rescan)
-        tb.addWidget(opent)
-        tb.addStretch(1)
-        fl.addLayout(tb)
-        lay.addWidget(fr)
-
         lay.addWidget(label("LOGS", "h2"))
         fr, fl = card()
         self.logv = QPlainTextEdit()
         self.logv.setObjectName("mono")
         self.logv.setReadOnly(True)
-        self.logv.setMinimumHeight(140)
+        self.logv.setMinimumHeight(160)
         fl.addWidget(self.logv)
         lb = QHBoxLayout()
-        ref = QPushButton("Refresh log")
+        ref = QPushButton("Refresh")
         ref.clicked.connect(self._load_log)
         fold = QPushButton("Open log folder")
         fold.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir()))))
@@ -677,8 +651,6 @@ class SettingsPage(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scrollable(inner))
-        self._load_log()
-        self._recheck()
 
     def _set(self, k: str, v) -> None:
         setattr(self.agent.store.settings, k, v)
@@ -688,20 +660,6 @@ class SettingsPage(QWidget):
         self._set("start_with_windows", v)
         self.apply_autostart(v)
 
-    def _recheck(self) -> None:
-        lines = []
-        for name, t in tools.all_tools(True).items():
-            mark = "●" if t.available else "○"
-            lines.append(f"{mark} {name:<10} {(t.version or '') if t.available else 'not found'}  {t.path if t.available and t.path != 'built-in' else ('built in' if t.available else '')}")
-        self.tools_lbl.setText("\n".join(lines))
-
-    def _open_tools(self) -> None:
-        from app.core.config import data_dir
-
-        d = data_dir() / "tools"
-        d.mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
-
     def _load_log(self) -> None:
         p = Path(log_dir()) / "mcubridge.log"
         try:
@@ -710,13 +668,5 @@ class SettingsPage(QWidget):
         except OSError:
             self.logv.setPlainText("(no log yet)")
 
-    def _revoke(self) -> None:
-        if QMessageBox.question(self, "Revoke this device", "Disconnect from your account and revoke this device's credential? You will need to pair again.") == QMessageBox.Yes:
-            threading.Thread(target=self.agent.revoke_this_device, daemon=True).start()
-            self.revoked.emit()
-
-    def refresh(self) -> None:
-        st = self.agent.state
-        self.acct.setText(f"Signed in as {st.account_email or '—'}   ·   {self.agent.store.settings.device_name}")
-        self.srv.setText(self.agent.store.settings.server_url)
-        self.revoke.setEnabled(st.connection not in ("pairing", "unpaired"))
+    def on_show(self) -> None:
+        self._load_log()

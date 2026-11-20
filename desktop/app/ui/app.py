@@ -13,7 +13,6 @@ from app.core.config import APP_NAME, SettingsStore, data_dir
 from app.hardware.devices import HardwareManager
 
 from . import theme
-from .pages import ActivityPage, DashboardPage, DevicePage, PairingPage, SettingsPage
 from .widgets import label
 
 
@@ -82,13 +81,17 @@ class _DeviceChange(QAbstractNativeEventFilter):
 
 
 class MainWindow(QMainWindow):
+    """Pages are created lazily on first visit so the window appears immediately."""
+
+    SECTIONS = ["Overview", "Activity", "Tools", "Account", "Settings"]
+
     def __init__(self, agent: Agent, hw: HardwareManager) -> None:
         super().__init__()
         self.agent, self.hw = agent, hw
         self.setWindowTitle("MCU Bridge")
         self.setWindowIcon(make_icon(64))
-        self.resize(1000, 700)
-        self.setMinimumSize(820, 560)
+        self.resize(1040, 720)
+        self.setMinimumSize(860, 580)
         root = QWidget()
         root.setObjectName("root")
         self.setCentralWidget(root)
@@ -97,7 +100,7 @@ class MainWindow(QMainWindow):
         hl.setSpacing(0)
         self.sidebar = QWidget()
         self.sidebar.setObjectName("sidebar")
-        self.sidebar.setFixedWidth(184)
+        self.sidebar.setFixedWidth(188)
         sl = QVBoxLayout(self.sidebar)
         sl.setContentsMargins(0, 22, 0, 16)
         sl.setSpacing(2)
@@ -105,7 +108,7 @@ class MainWindow(QMainWindow):
         brand.setContentsMargins(20, 0, 0, 18)
         sl.addWidget(brand)
         self.navs: list[QPushButton] = []
-        for i, name in enumerate(["Overview", "Activity", "Settings"]):
+        for i, name in enumerate(self.SECTIONS):
             b = QPushButton(name)
             b.setObjectName("nav")
             b.setCursor(Qt.PointingHandCursor)
@@ -119,34 +122,62 @@ class MainWindow(QMainWindow):
         hl.addWidget(self.sidebar)
 
         self.stack = QStackedWidget()
-        self.pairing = PairingPage(agent)
-        self.dash = DashboardPage(agent)
-        self.activity = ActivityPage(agent)
-        self.device = DevicePage(agent, hw)
-        self.settings = SettingsPage(agent, hw, set_autostart)
-        for w in (self.dash, self.activity, self.settings, self.device, self.pairing):
-            self.stack.addWidget(w)
         hl.addWidget(self.stack, 1)
-        self.dash.open_device.connect(self.show_device)
-        self.device.back.connect(lambda: self.go(0))
+        self._pages: dict[str, QWidget] = {}
         self._section = 0
+        # the pairing page and the overview are needed at startup; everything else is built on demand
+        self.pairing = self._page("pairing")
         self.go(0)
-        self._last_job_sig = ""
 
-    # indices: 0 dash, 1 activity, 2 settings, 3 device, 4 pairing
+    # ------------------------------------------------------------- page factory
+    def _page(self, key: str) -> QWidget:
+        if key in self._pages:
+            return self._pages[key]
+        from .pages import ActivityPage, DashboardPage, DevicePage, PairingPage, SettingsPage
+        from .pages_account import AccountPage
+        from .pages_tools import ToolsPage
+
+        if key == "pairing":
+            w: QWidget = PairingPage(self.agent)
+        elif key == "Overview":
+            w = DashboardPage(self.agent)
+            w.open_device.connect(self.show_device)  # type: ignore[attr-defined]
+        elif key == "Activity":
+            w = ActivityPage(self.agent)
+        elif key == "Tools":
+            w = ToolsPage(self.agent.rescan_now)
+        elif key == "Account":
+            w = AccountPage(self.agent)
+            w.signed_out.connect(self.refresh)  # type: ignore[attr-defined]
+        elif key == "Settings":
+            w = SettingsPage(self.agent, self.hw, set_autostart)
+        elif key == "device":
+            w = DevicePage(self.agent, self.hw)
+            w.back.connect(lambda: self.go(0))  # type: ignore[attr-defined]
+            w.open_tools.connect(lambda: self.go(2))  # type: ignore[attr-defined]
+        else:
+            raise KeyError(key)
+        self._pages[key] = w
+        self.stack.addWidget(w)
+        return w
+
     def go(self, i: int) -> None:
         self._section = i
-        self.stack.setCurrentIndex(i)
+        w = self._page(self.SECTIONS[i])
+        self.stack.setCurrentWidget(w)
         for k, b in enumerate(self.navs):
             b.setProperty("active", "true" if k == i else "false")
             b.style().unpolish(b)
             b.style().polish(b)
+        if hasattr(w, "on_show"):
+            w.on_show()  # type: ignore[attr-defined]
         self.refresh()
 
     def show_device(self, dev_id: str) -> None:
-        self.device.show_device(dev_id)
-        self._section = 3
-        self.stack.setCurrentIndex(3)
+        dp = self._page("device")
+        dp.show_device(dev_id)  # type: ignore[attr-defined]
+        self._section = -1
+        self.stack.setCurrentWidget(dp)
         for b in self.navs:
             b.setProperty("active", "false")
             b.style().unpolish(b)
@@ -157,13 +188,13 @@ class MainWindow(QMainWindow):
         needs_pairing = st.connection in ("unpaired", "pairing", "revoked") or (st.connection == "offline" and not self.agent.creds.load())
         self.sidebar.setVisible(not needs_pairing)
         if needs_pairing:
-            self.stack.setCurrentIndex(4)
-            self.pairing.refresh()
+            self.stack.setCurrentWidget(self.pairing)
+            self.pairing.refresh()  # type: ignore[attr-defined]
             return
-        if self.stack.currentIndex() == 4:
-            self.stack.setCurrentIndex(self._section if self._section != 3 else 0)
+        if self.stack.currentWidget() is self.pairing:
+            self.stack.setCurrentWidget(self._page(self.SECTIONS[max(self._section, 0)]))
         cur = self.stack.currentWidget()
-        if hasattr(cur, "refresh"):
+        if hasattr(cur, "refresh") and cur is not self.pairing:
             cur.refresh()  # type: ignore[attr-defined]
         active = [j for j in st.jobs if not j.finished]
         self.foot.setText(("● " + ("flashing" if active else st.connection)) if st.connection != "connected" or active else "")

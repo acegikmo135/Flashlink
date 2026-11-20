@@ -26,6 +26,26 @@ EXCLUDES = [
 ]
 
 
+# Qt parts this app never loads (QtWidgets raster rendering only). The CI self-test re-verifies startup after pruning.
+PRUNE_PATTERNS = [
+    "**/translations/*", "**/opengl32sw.dll", "**/d3dcompiler_47.dll", "**/Qt6Pdf*.dll", "**/Qt6Quick*.dll", "**/Qt6Qml*.dll", "**/Qt6Svg*.dll",
+    "**/Qt6VirtualKeyboard*.dll", "**/Qt6OpenGL*.dll", "**/plugins/iconengines/*", "**/plugins/imageformats/qsvg*", "**/plugins/imageformats/qpdf*",
+    "**/plugins/imageformats/qtiff*", "**/plugins/imageformats/qwebp*", "**/plugins/imageformats/qgif*", "**/plugins/imageformats/qicns*",
+    "**/plugins/imageformats/qtga*", "**/plugins/imageformats/qwbmp*", "**/plugins/networkinformation/*", "**/plugins/tls/*",
+    "**/plugins/generic/*", "**/plugins/platforminputcontexts/*", "**/*.pdb", "**/*.lib", "**/*.prl",
+]
+
+
+def prune(root: Path) -> list[Path]:
+    removed: list[Path] = []
+    for pat in PRUNE_PATTERNS:
+        for f in root.glob(pat):
+            if f.is_file():
+                f.unlink()
+                removed.append(f)
+    return removed
+
+
 def main() -> int:
     try:
         import PyInstaller.__main__ as pyi
@@ -53,6 +73,10 @@ def main() -> int:
     pyi.run(args)
 
     out = HERE / "dist" / "MCUBridge"
+    before = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    removed = prune(out)
+    after = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    print(f"pruned {len(removed)} files: {before // 1_000_000} MB -> {after // 1_000_000} MB")
     shutil.copytree(HERE / "tools", out / "tools", dirs_exist_ok=True)
     (out / "tools" / "README.txt").write_text(
         "Optional flashing utilities (not bundled; MCU Bridge never installs them silently).\n\n"
