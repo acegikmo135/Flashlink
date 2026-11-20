@@ -86,5 +86,10 @@ describe("device selection", () => {
     expect(selectDevice([dev("dev1", false)], { a1: agent(true) }, "dev1")).toMatchObject({ ok: false, error: { code: "DEVICE_DISCONNECTED" } });
     expect(selectDevice([dev("dev1")], { a1: agent(true) }, "nope")).toMatchObject({ ok: false, error: { code: "DEVICE_NOT_FOUND" } });
     expect(selectDevice([dev("dev1")], { a1: agent(true) })).toMatchObject({ ok: true });
+    // unsupported serial ports (e.g. Bluetooth COM ports) must not cause MULTIPLE_DEVICES
+    const bt = { ...dev("bt1"), supported: false };
+    const bt2 = { ...dev("bt2"), supported: false };
+    expect(selectDevice([bt, bt2, dev("dev1")], { a1: agent(true) })).toMatchObject({ ok: true, device: { id: "dev1" } });
+    expect(selectDevice([bt, bt2], { a1: agent(true) })).toMatchObject({ ok: false, error: { code: "NO_DEVICE" } });
   });
 });

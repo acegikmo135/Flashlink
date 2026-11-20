@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcu-bridge": {
+      "type": "http",
+      "url": "https://mcu-bridge.manthankansagra.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCU_BRIDGE_TOKEN}"
+      }
+    }
+  }
+}

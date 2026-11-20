@@ -36,9 +36,10 @@ export function selectDevice(
   if (online.length === 0) {
     return { ok: false, error: { code: "NO_AGENT_CONNECTED", message: "No MCU Bridge desktop app is connected to this account.", hint: "Ask the user to start MCU Bridge on their Windows PC and make sure it shows 'Connected'." } };
   }
-  const live = devices.filter((d) => isReachable(d, agents));
+  // Only supported MCUs count when auto-selecting: Bluetooth serial ports, modems etc. are noise.
+  const live = devices.filter((d) => isReachable(d, agents) && d.supported);
   if (live.length === 0) {
-    return { ok: false, error: { code: "NO_DEVICE", message: "The desktop app is connected but no microcontroller is plugged in.", hint: "Ask the user to connect the board via USB, then call detect_new_devices with wait_seconds." } };
+    return { ok: false, error: { code: "NO_DEVICE", message: "The desktop app is connected but no supported microcontroller is plugged in.", hint: "Ask the user to connect the board via USB, then call detect_new_devices with wait_seconds." } };
   }
   if (live.length > 1) {
     return {

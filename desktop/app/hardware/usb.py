@@ -90,8 +90,8 @@ def device_id(install_id: str, u: UsbPort) -> str:
 def scan_serial_ports() -> list[UsbPort]:
     out = []
     for p in list_ports.comports():
-        if p.vid is None and sys.platform != "win32":
-            continue  # skip legacy/platform UARTs (/dev/ttyS*)
+        if p.vid is None:
+            continue  # not a USB device: Bluetooth COM ports, legacy/platform UARTs, modems
         out.append(UsbPort(p.device, p.vid, p.pid, p.serial_number or None, p.manufacturer or None, p.product or None, p.description or None))
     return out
 

@@ -152,7 +152,7 @@ export function buildServer(ctx: McpContext): McpServer {
       title: "List connected MCUs",
       description:
         "List desktop apps and microcontrollers currently known to this account. The 'situation' field tells you immediately whether the desktop app is offline (no_agent), nothing is plugged in (no_device), exactly one board is available (single_device) or you must choose a device_id (multiple_devices). Disconnected devices seen in the last 24h are included with state 'disconnected'.",
-      inputSchema: strict({ include_disconnected: z.boolean().optional().describe("Also list devices that were recently unplugged (default false).") }),
+      inputSchema: strict({ include_disconnected: z.boolean().optional().describe("Also list recently unplugged devices and unsupported serial ports such as Bluetooth COM ports (default false).") }),
       outputSchema: { ok: z.boolean(), situation: z.enum(["no_agent", "no_device", "single_device", "multiple_devices"]), registry_version: z.number(), agents: z.array(z.record(z.any())), devices: z.array(z.record(z.any())), hint: z.string() },
       annotations: { title: "List connected MCUs", ...readOnly },
     },
@@ -161,7 +161,7 @@ export function buildServer(ctx: McpContext): McpServer {
         const snap = await hub().snapshot();
         const jobs = await hub().listJobs();
         const agents = Object.fromEntries(snap.agents.map((a) => [a.id, a]));
-        const live = snap.devices.filter((d) => isReachable(d, agents));
+        const live = snap.devices.filter((d) => isReachable(d, agents) && d.supported);
         const online = snap.agents.some((a) => a.connected);
         const situation = !online ? "no_agent" : live.length === 0 ? "no_device" : live.length === 1 ? "single_device" : "multiple_devices";
         const hint = {
@@ -170,7 +170,7 @@ export function buildServer(ctx: McpContext): McpServer {
           single_device: "One device available; device_id may be omitted in other tools.",
           multiple_devices: "Several devices are connected. Pass device_id explicitly.",
         }[situation];
-        const shown = snap.devices.filter((d) => include_disconnected || isReachable(d, agents));
+        const shown = snap.devices.filter((d) => (include_disconnected || isReachable(d, agents)) && (d.supported || include_disconnected));
         return ok({ situation, registry_version: snap.version, agents: snap.agents.map(publicAgent), devices: shown.map((d) => publicDevice(d, agents, jobs)), hint });
       }),
   );
