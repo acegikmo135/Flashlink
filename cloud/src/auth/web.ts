@@ -15,7 +15,7 @@ const html = (body: string, status = 200, headers: Record<string, string> = {}) 
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
       "x-frame-options": "DENY",
-      "referrer-policy": "no-referrer",
+      "referrer-policy": "same-origin",
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; script-src 'none'",
       ...headers,
     },
@@ -69,9 +69,12 @@ async function startSession(request: Request, env: Env, userId: string, to: stri
 
 /** CSRF defence for state-changing browser requests: same-origin only. */
 function sameOrigin(request: Request): boolean {
+  // Browsers always send Sec-Fetch-Site; it is the most reliable signal
+  // (Origin can legitimately be "null" under some Referrer-Policy settings).
+  const site = request.headers.get("sec-fetch-site");
+  if (site) return site === "same-origin" || site === "none";
   const origin = request.headers.get("origin");
-  if (!origin) return request.headers.get("sec-fetch-site") !== "cross-site";
-  return origin === new URL(request.url).origin;
+  return !origin || origin === new URL(request.url).origin;
 }
 
 async function form(request: Request): Promise<URLSearchParams | null> {
