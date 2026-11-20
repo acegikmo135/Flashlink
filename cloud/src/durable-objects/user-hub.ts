@@ -553,7 +553,8 @@ export class UserHub extends DurableObject<Env> {
     const all = Object.values(this.state.devices);
     return {
       version: this.state.version,
-      added: all.filter((d) => d.connected && d.added_version > since),
+      // only devices that can actually be used right now (their desktop app is online too)
+      added: all.filter((d) => d.connected && this.state.agents[d.agent_id]?.connected && d.added_version > since),
       removed: all.filter((d) => !d.connected && d.removed_version > since),
     };
   }
