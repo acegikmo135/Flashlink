@@ -1,0 +1,14 @@
+node_modules/
+.wrangler/
+.dev.vars
+.mcu-bridge/
+dist/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.spec.bak
+desktop/dist/
+desktop/build/
+.DS_Store

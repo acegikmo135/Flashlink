@@ -1,0 +1,875 @@
+[
+ {
+  "name": "esp32 valid",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "esp32 missing flash mode",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "REQUIRED"
+  ]
+ },
+ {
+  "name": "esp32 address out of range",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x400000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_OUT_OF_RANGE"
+  ]
+ },
+ {
+  "name": "esp32 unaligned address",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1001",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_ALIGNMENT"
+  ]
+ },
+ {
+  "name": "esp32 overlapping regions",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 40000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "REGIONS_OVERLAP"
+  ]
+ },
+ {
+  "name": "esp32 bad baud",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 12345
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "BAD_BAUD"
+  ]
+ },
+ {
+  "name": "esp32 file too large",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 20000000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "FILE_TOO_LARGE"
+  ]
+ },
+ {
+  "name": "family/board mismatch",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "arduino-uno",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "FAMILY_BOARD_MISMATCH"
+  ]
+ },
+ {
+  "name": "unknown board",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "nope-board",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "UNKNOWN_BOARD"
+  ]
+ },
+ {
+  "name": "duplicate filename",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "bootloader.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "DUPLICATE_FILENAME"
+  ]
+ },
+ {
+  "name": "flash size exceeds board",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "8MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "FLASH_SIZE_EXCEEDS_BOARD"
+  ]
+ },
+ {
+  "name": "path traversal filename",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "../x.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "SCHEMA"
+  ]
+ },
+ {
+  "name": "bad sha256",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "xyz"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "SCHEMA"
+  ]
+ },
+ {
+  "name": "unknown top-level key",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ],
+   "command": "rm -rf /"
+  },
+  "valid": false,
+  "codes": [
+   "SCHEMA"
+  ]
+ },
+ {
+  "name": "hex format not allowed on esp",
+  "manifest": {
+   "job_id": "job_test_0001",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "a.hex",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "BAD_FORMAT"
+  ]
+ },
+ {
+  "name": "avr valid",
+  "manifest": {
+   "job_id": "job_avr_0001",
+   "target": {
+    "family": "avr",
+    "board": "arduino-uno"
+   },
+   "flash_config": {
+    "baud_rate": 115200
+   },
+   "files": [
+    {
+     "address": "0x0",
+     "filename": "blink.hex",
+     "size": 3000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "avr non-zero address",
+  "manifest": {
+   "job_id": "job_avr_0002",
+   "target": {
+    "family": "avr",
+    "board": "arduino-uno"
+   },
+   "files": [
+    {
+     "address": "0x100",
+     "filename": "blink.hex",
+     "size": 3000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_OUT_OF_RANGE"
+  ]
+ },
+ {
+  "name": "avr two files",
+  "manifest": {
+   "job_id": "job_avr_0003",
+   "target": {
+    "family": "avr",
+    "board": "arduino-uno"
+   },
+   "files": [
+    {
+     "address": "0x0",
+     "filename": "a.hex",
+     "size": 10,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x0",
+     "filename": "b.hex",
+     "size": 10,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "AVR_SINGLE_FILE"
+  ]
+ },
+ {
+  "name": "stm32 valid",
+  "manifest": {
+   "job_id": "job_stm_0001",
+   "target": {
+    "family": "stm32",
+    "board": "stm32-bluepill-f103c8"
+   },
+   "files": [
+    {
+     "address": "0x08000000",
+     "filename": "app.bin",
+     "size": 20000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "stm32 below flash base",
+  "manifest": {
+   "job_id": "job_stm_0002",
+   "target": {
+    "family": "stm32",
+    "board": "stm32-bluepill-f103c8"
+   },
+   "files": [
+    {
+     "address": "0x0",
+     "filename": "app.bin",
+     "size": 20000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_OUT_OF_RANGE"
+  ]
+ },
+ {
+  "name": "stm32 image too big",
+  "manifest": {
+   "job_id": "job_stm_0003",
+   "target": {
+    "family": "stm32",
+    "board": "stm32-bluepill-f103c8"
+   },
+   "files": [
+    {
+     "address": "0x08000000",
+     "filename": "app.bin",
+     "size": 70000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_OUT_OF_RANGE"
+  ]
+ },
+ {
+  "name": "ch32v003 valid",
+  "manifest": {
+   "job_id": "job_ch32_001",
+   "target": {
+    "family": "ch32v003",
+    "board": "ch32v003f4p6"
+   },
+   "files": [
+    {
+     "address": "0x08000000",
+     "filename": "app.bin",
+     "size": 8000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "ch32v003 too large",
+  "manifest": {
+   "job_id": "job_ch32_002",
+   "target": {
+    "family": "ch32v003",
+    "board": "ch32v003f4p6"
+   },
+   "files": [
+    {
+     "address": "0x08000000",
+     "filename": "app.bin",
+     "size": 17000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "ADDRESS_OUT_OF_RANGE"
+  ]
+ },
+ {
+  "name": "esp32s3 valid at 0x0",
+  "manifest": {
+   "job_id": "job_s3_00001",
+   "target": {
+    "family": "esp32s3",
+    "board": "esp32-s3-devkitc-1",
+    "flash_size": "8MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "80m"
+   },
+   "files": [
+    {
+     "address": "0x0",
+     "filename": "bootloader.bin",
+     "size": 20000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "app.bin",
+     "size": 300000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "esp8266 valid",
+  "manifest": {
+   "job_id": "job_8266_001",
+   "target": {
+    "family": "esp8266",
+    "board": "esp8266-nodemcu",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m"
+   },
+   "files": [
+    {
+     "address": "0x0",
+     "filename": "firmware.bin",
+     "size": 300000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": true,
+  "codes": []
+ },
+ {
+  "name": "short job id",
+  "manifest": {
+   "job_id": "abc",
+   "target": {
+    "family": "esp32",
+    "board": "esp32-wroom-32",
+    "flash_size": "4MB"
+   },
+   "flash_config": {
+    "mode": "dio",
+    "frequency": "40m",
+    "baud_rate": 460800
+   },
+   "files": [
+    {
+     "address": "0x1000",
+     "filename": "bootloader.bin",
+     "size": 26000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x8000",
+     "filename": "partitions.bin",
+     "size": 3072,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+     "address": "0x10000",
+     "filename": "firmware.bin",
+     "size": 900000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ]
+  },
+  "valid": false,
+  "codes": [
+   "SCHEMA"
+  ]
+ }
+]

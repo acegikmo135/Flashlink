@@ -1,0 +1,40 @@
+{
+  "registry_version": 1,
+  "limits": {
+    "max_file_bytes": 16777216,
+    "max_total_bytes": 33554432,
+    "max_files": 8,
+    "chunk_bytes": 65536
+  },
+  "families": {
+    "esp32":   { "label": "ESP32",    "tool": "esptool", "chip": "esp32",   "image_chip_id": 0,  "baud_rates": [115200, 230400, 460800, 921600], "default_baud": 460800, "flash_modes": ["qio", "qout", "dio", "dout"], "flash_freqs": ["80m", "40m", "26m", "20m"], "flash_sizes": ["2MB", "4MB", "8MB", "16MB", "32MB"], "formats": ["bin"], "address_align": 4096 },
+    "esp32s2": { "label": "ESP32-S2", "tool": "esptool", "chip": "esp32s2", "image_chip_id": 2,  "baud_rates": [115200, 230400, 460800, 921600], "default_baud": 460800, "flash_modes": ["qio", "qout", "dio", "dout"], "flash_freqs": ["80m", "40m", "26m", "20m"], "flash_sizes": ["2MB", "4MB", "8MB", "16MB"], "formats": ["bin"], "address_align": 4096 },
+    "esp32s3": { "label": "ESP32-S3", "tool": "esptool", "chip": "esp32s3", "image_chip_id": 9,  "baud_rates": [115200, 230400, 460800, 921600], "default_baud": 460800, "flash_modes": ["qio", "qout", "dio", "dout"], "flash_freqs": ["80m", "40m", "20m"], "flash_sizes": ["2MB", "4MB", "8MB", "16MB", "32MB"], "formats": ["bin"], "address_align": 4096 },
+    "esp32c3": { "label": "ESP32-C3", "tool": "esptool", "chip": "esp32c3", "image_chip_id": 5,  "baud_rates": [115200, 230400, 460800, 921600], "default_baud": 460800, "flash_modes": ["qio", "qout", "dio", "dout"], "flash_freqs": ["80m", "40m", "26m", "20m"], "flash_sizes": ["2MB", "4MB", "8MB", "16MB"], "formats": ["bin"], "address_align": 4096 },
+    "esp8266": { "label": "ESP8266",  "tool": "esptool", "chip": "esp8266", "image_chip_id": null, "baud_rates": [115200, 230400, 460800], "default_baud": 460800, "flash_modes": ["qio", "qout", "dio", "dout"], "flash_freqs": ["80m", "40m", "26m", "20m"], "flash_sizes": ["512KB", "1MB", "2MB", "4MB", "8MB", "16MB"], "formats": ["bin"], "address_align": 4096 },
+    "avr":     { "label": "AVR (Arduino)", "tool": "avrdude", "chip": "avr", "baud_rates": [57600, 115200], "default_baud": 115200, "formats": ["ihex", "bin"], "address_align": 1 },
+    "stm32":   { "label": "STM32",    "tool": "stm32", "chip": "stm32", "baud_rates": [], "default_baud": 0, "formats": ["bin", "ihex"], "address_align": 4, "flash_base": "0x08000000" },
+    "ch32v003": { "label": "CH32V003", "tool": "wlink", "chip": "ch32v003", "baud_rates": [], "default_baud": 0, "formats": ["bin"], "address_align": 4, "flash_base": "0x08000000", "flash_bytes": 16384 }
+  },
+  "boards": [
+    { "id": "esp32-wroom-32",      "label": "ESP32-WROOM-32 / DevKitC", "family": "esp32",   "max_flash": "4MB" },
+    { "id": "esp32-wrover",        "label": "ESP32-WROVER",             "family": "esp32",   "max_flash": "16MB" },
+    { "id": "esp32-generic",       "label": "ESP32 (generic module)",   "family": "esp32",   "max_flash": "32MB" },
+    { "id": "esp32-s2-saola-1",    "label": "ESP32-S2-Saola-1",         "family": "esp32s2", "max_flash": "4MB" },
+    { "id": "esp32-s3-devkitc-1",  "label": "ESP32-S3-DevKitC-1",       "family": "esp32s3", "max_flash": "32MB" },
+    { "id": "esp32-c3-devkitm-1",  "label": "ESP32-C3-DevKitM-1",       "family": "esp32c3", "max_flash": "4MB" },
+    { "id": "esp32-c3-supermini",  "label": "ESP32-C3 SuperMini",       "family": "esp32c3", "max_flash": "4MB" },
+    { "id": "esp8266-nodemcu",     "label": "NodeMCU v2/v3 (ESP8266)",  "family": "esp8266", "max_flash": "4MB" },
+    { "id": "esp8266-wemos-d1-mini", "label": "WeMos / LOLIN D1 mini",  "family": "esp8266", "max_flash": "4MB" },
+    { "id": "esp8266-generic",     "label": "ESP8266 (generic module)", "family": "esp8266", "max_flash": "16MB" },
+    { "id": "arduino-uno",         "label": "Arduino Uno (ATmega328P)", "family": "avr", "avr_part": "m328p",  "avr_programmer": "arduino", "flash_bytes": 32256,  "default_baud": 115200 },
+    { "id": "arduino-nano",        "label": "Arduino Nano (new bootloader)", "family": "avr", "avr_part": "m328p", "avr_programmer": "arduino", "flash_bytes": 30720, "default_baud": 115200 },
+    { "id": "arduino-nano-old-bootloader", "label": "Arduino Nano (old bootloader, 57600)", "family": "avr", "avr_part": "m328p", "avr_programmer": "arduino", "flash_bytes": 30720, "default_baud": 57600 },
+    { "id": "arduino-mega2560",    "label": "Arduino Mega 2560",        "family": "avr", "avr_part": "m2560", "avr_programmer": "wiring",  "flash_bytes": 253952, "default_baud": 115200 },
+    { "id": "stm32-bluepill-f103c8", "label": "STM32F103C8 'Blue Pill' (ST-Link)", "family": "stm32", "flash_bytes": 65536,   "openocd_target": "stm32f1x.cfg" },
+    { "id": "stm32-blackpill-f411ce", "label": "STM32F411CE 'Black Pill' (ST-Link)", "family": "stm32", "flash_bytes": 524288, "openocd_target": "stm32f4x.cfg" },
+    { "id": "stm32-nucleo-f103rb", "label": "NUCLEO-F103RB (on-board ST-Link)", "family": "stm32", "flash_bytes": 131072, "openocd_target": "stm32f1x.cfg" },
+    { "id": "stm32-nucleo-l476rg", "label": "NUCLEO-L476RG (on-board ST-Link)", "family": "stm32", "flash_bytes": 1048576, "openocd_target": "stm32l4x.cfg" },
+    { "id": "ch32v003f4p6",        "label": "CH32V003F4P6 (WCH-LinkE)",  "family": "ch32v003", "flash_bytes": 16384 }
+  ]
+}

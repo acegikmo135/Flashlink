@@ -1,0 +1,28 @@
+# MCU Bridge — Cloudflare Worker configuration.
+# `scripts/setup.mjs` fills in the D1 database_id after creating the database.
+name = "mcu-bridge"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "USER_HUB"
+class_name = "UserHub"
+
+[[durable_objects.bindings]]
+name = "TRANSFER_RELAY"
+class_name = "TransferRelay"
+
+# SQLite-backed Durable Objects (available on the Workers Free plan).
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UserHub", "TransferRelay"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mcu-bridge"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
