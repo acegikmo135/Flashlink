@@ -11,7 +11,25 @@ from pathlib import Path
 
 APP_NAME = "MCUBridge"
 APP_VERSION = "0.1.0"
-DEFAULT_SERVER = "https://mcu-bridge.manthankansagra.workers.dev"
+
+
+def _default_server() -> str:
+    """Worker URL baked in at build time (desktop/server_url.txt, written by setup)."""
+    candidates = []
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(getattr(sys, "_MEIPASS", ".")) / "server_url.txt")
+    candidates.append(Path(__file__).resolve().parents[2] / "server_url.txt")
+    for c in candidates:
+        try:
+            v = c.read_text(encoding="utf-8").strip()
+            if v.startswith("https://") or v.startswith("http://localhost") or v.startswith("http://127."):
+                return v.rstrip("/")
+        except OSError:
+            pass
+    return "https://YOUR-WORKER.workers.dev"
+
+
+DEFAULT_SERVER = _default_server()
 
 
 def data_dir() -> Path:
