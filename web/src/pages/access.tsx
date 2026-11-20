@@ -96,7 +96,7 @@ export function AccessPage() {
     <>
       <PageHeader title="Access" description="Connect Claude (or any MCP client) to your boards." />
 
-      <Card>
+      <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Plug className="size-4" /> Connector (recommended)</CardTitle>
           <CardDescription>Add MCU Bridge in claude.ai → Settings → Connectors → Add custom connector, then sign in here when prompted. No token to copy.</CardDescription>
@@ -110,7 +110,7 @@ export function AccessPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
+      <Card className="mt-6 ios-rise" style={{ "--i": 1 } as React.CSSProperties}>
         <CardHeader>
           <CardTitle>Connected apps</CardTitle>
           <CardDescription>Applications you authorised through the sign-in flow.</CardDescription>
@@ -136,7 +136,7 @@ export function AccessPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
+      <Card className="mt-6 ios-rise" style={{ "--i": 2 } as React.CSSProperties}>
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div>

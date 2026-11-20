@@ -4,16 +4,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractNativeEventFilter, QLockFile, QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QAbstractNativeEventFilter, QEasingCurve, QLockFile, QObject, QPropertyAnimation, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QMenu, QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QMainWindow, QMenu, QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget
 
 from app.core.agent import Agent
 from app.core.config import APP_NAME, SettingsStore, data_dir
 from app.hardware.devices import HardwareManager
 
 from . import theme
-from .widgets import label
+from .widgets import NavIcon, Segmented, fade_in, label
 
 
 def make_icon(size: int = 64, color: str = theme.FG, bg: str | None = None) -> QIcon:
@@ -107,15 +107,31 @@ class MainWindow(QMainWindow):
         brand = label("MCU BRIDGE", "brand")
         brand.setContentsMargins(20, 0, 0, 18)
         sl.addWidget(brand)
+        sl.setContentsMargins(10, 24, 10, 16)
         self.navs: list[QPushButton] = []
+        # sliding selection pill, drawn behind the (transparent) nav buttons
+        self.indicator = QFrame(self.sidebar)
+        self.indicator.lower()
+        self._style_indicator()
+        glyphs = [("grid", "#0a84ff"), ("pulse", "#ff9f0a"), ("tools", "#30d158"), ("person", "#bf5af2"), ("gear", "#8e8e93")]
         for i, name in enumerate(self.SECTIONS):
             b = QPushButton(name)
             b.setObjectName("nav")
             b.setCursor(Qt.PointingHandCursor)
+            b.setFixedHeight(42)
             b.clicked.connect(lambda _=False, i=i: self.go(i))
+            icon = NavIcon(*glyphs[i])
+            icon.setParent(b)
+            icon.move(12, 7)
             sl.addWidget(b)
             self.navs.append(b)
         sl.addStretch(1)
+        self.theme_seg = Segmented([("light", "Light"), ("dark", "Dark"), ("auto", "Auto")], agent.store.settings.theme, 30)
+        self.theme_seg.changed.connect(self._set_theme)
+        seg_wrap = QHBoxLayout()
+        seg_wrap.setContentsMargins(14, 0, 14, 8)
+        seg_wrap.addWidget(self.theme_seg)
+        sl.addLayout(seg_wrap)
         self.foot = label("", "dim")
         self.foot.setContentsMargins(20, 0, 8, 0)
         sl.addWidget(self.foot)
@@ -127,6 +143,8 @@ class MainWindow(QMainWindow):
         self._section = 0
         # the pairing page and the overview are needed at startup; everything else is built on demand
         self.pairing = self._page("pairing")
+        self._anim: QPropertyAnimation | None = None
+        theme.on_change(lambda _m: self._retheme())
         self.go(0)
 
     # ------------------------------------------------------------- page factory
@@ -161,23 +179,72 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(w)
         return w
 
+    # ----------------------------------------------------------------- theming
+    def _style_indicator(self) -> None:
+        self.indicator.setStyleSheet(f"background:{theme.TINT};border-radius:12px;")
+
+    def _retheme(self) -> None:
+        self._style_indicator()
+        self.refresh()
+
+    def _set_theme(self, mode: str) -> None:
+        self.agent.store.settings.theme = mode
+        self.agent.store.save()
+        theme.apply(mode, QApplication.instance())
+
+    def _move_indicator(self, animate: bool = True) -> None:
+        if not (0 <= self._section < len(self.navs)):
+            self.indicator.hide()
+            return
+        b = self.navs[self._section]
+        target = QRect(b.x(), b.y(), b.width(), b.height())
+        if target.width() <= 0:
+            return
+        self.indicator.show()
+        self.indicator.lower()
+        if not animate or not self.indicator.isVisible() or self.indicator.geometry().width() <= 0 or self.indicator.geometry() == QRect(0, 0, 100, 30):
+            self.indicator.setGeometry(target)
+            return
+        if self._anim:
+            self._anim.stop()
+        self._anim = QPropertyAnimation(self.indicator, b"geometry", self)
+        self._anim.setDuration(420)
+        self._anim.setEasingCurve(QEasingCurve.OutBack)
+        self._anim.setStartValue(self.indicator.geometry())
+        self._anim.setEndValue(target)
+        self._anim.start()
+
+    def showEvent(self, e) -> None:  # noqa: N802
+        super().showEvent(e)
+        QTimer.singleShot(0, lambda: self._move_indicator(False))
+
+    def resizeEvent(self, e) -> None:  # noqa: N802
+        super().resizeEvent(e)
+        self._move_indicator(False)
+
     def go(self, i: int) -> None:
         self._section = i
         w = self._page(self.SECTIONS[i])
+        changed = self.stack.currentWidget() is not w
         self.stack.setCurrentWidget(w)
         for k, b in enumerate(self.navs):
             b.setProperty("active", "true" if k == i else "false")
             b.style().unpolish(b)
             b.style().polish(b)
+        self._move_indicator(True)
         if hasattr(w, "on_show"):
             w.on_show()  # type: ignore[attr-defined]
+        if changed:
+            fade_in(self.stack)
         self.refresh()
 
     def show_device(self, dev_id: str) -> None:
         dp = self._page("device")
         dp.show_device(dev_id)  # type: ignore[attr-defined]
         self._section = -1
+        self.indicator.hide()
         self.stack.setCurrentWidget(dp)
+        fade_in(self.stack)
         for b in self.navs:
             b.setProperty("active", "false")
             b.style().unpolish(b)
@@ -207,7 +274,11 @@ def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidde
     app = QApplication(sys.argv[:1])
     app.setApplicationName("MCU Bridge")
     app.setQuitOnLastWindowClosed(False)
-    app.setStyleSheet(theme.QSS)
+    theme.apply(store.settings.theme, app)
+    try:  # "Auto" follows the Windows light/dark switch live
+        app.styleHints().colorSchemeChanged.connect(lambda _cs: theme.apply("auto", app) if store.settings.theme == "auto" else None)
+    except Exception:
+        pass
     f = QFont()
     f.setPointSize(10)
     app.setFont(f)
@@ -280,7 +351,14 @@ def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidde
 
     win.closeEvent = closeEvent  # type: ignore[method-assign]
     if not start_hidden:
+        win.setWindowOpacity(0.0)
         win.show()
+        fade = QPropertyAnimation(win, b"windowOpacity", win)
+        fade.setDuration(260)
+        fade.setStartValue(0.0)
+        fade.setEndValue(1.0)
+        fade.setEasingCurve(QEasingCurve.OutCubic)
+        fade.start(QPropertyAnimation.DeleteWhenStopped)
     code = app.exec()
     lock.unlock()
     return code

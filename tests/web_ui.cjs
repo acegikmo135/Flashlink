@@ -61,8 +61,8 @@ const check = (name, ok, extra = "") => { results.push({ name, ok: !!ok, extra }
   await page.keyboard.press("Escape");
   await page.goto(base + "/dashboard");
   await page.waitForSelector("text=Success rate");
-  await page.click("button[aria-label='Toggle theme']");
-  await page.waitForTimeout(300);
+  await page.click("button[aria-label='Light']");
+  await page.waitForTimeout(700);
   check("theme toggles to light", !(await page.evaluate(() => document.documentElement.classList.contains("dark"))));
   await page.screenshot({ path: `${out}/6-overview-light.png` });
 

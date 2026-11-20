@@ -12,7 +12,7 @@ export function ActivityPage() {
   return (
     <>
       <PageHeader title="Activity" description="Every flash and verification requested through MCP. Firmware is never stored — only this metadata." />
-      <Card>
+      <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
         <CardContent>
           {data.jobs.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">No activity yet.</p>

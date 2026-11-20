@@ -15,7 +15,7 @@ function newUserCode(): string {
 
 /** POST /api/pair/start — called by the desktop app on first launch. */
 export async function pairStart(request: Request, env: Env): Promise<Response> {
-  if (!(await rateLimit(env, `pair-start:${clientIp(request)}`, 15, 3600))) return errorJson(429, "RATE_LIMITED", "Too many pairing attempts. Try again later.");
+  if (!(await rateLimit(env, `pair-start:${clientIp(request)}`, Number(env.PAIR_START_LIMIT) || 15, 3600))) return errorJson(429, "RATE_LIMITED", "Too many pairing attempts. Try again later.");
   const body = await readJson<{ install_id?: string; device_name?: string; platform?: string }>(request, 4096);
   const installId = body?.install_id;
   if (!body || typeof installId !== "string" || !/^[A-Za-z0-9-]{8,64}$/.test(installId)) return errorJson(400, "BAD_REQUEST", "install_id is required.");

@@ -71,6 +71,7 @@ class Settings:
     # switch on "Allow remote flashing" per device.
     trust_policy: str = "auto"
     device_allow: dict = field(default_factory=dict)  # device_id -> bool override
+    theme: str = "auto"  # "light" | "dark" | "auto" (follow Windows)
     simulate: bool = False
 
 

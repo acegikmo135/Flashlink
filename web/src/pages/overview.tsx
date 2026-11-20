@@ -11,11 +11,11 @@ import { ago } from "@/lib/format"
 import { useOverview, useSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
-function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+function Stat({ label, value, hint, i = 0, tint }: { label: string; value: React.ReactNode; hint?: string; i?: number; tint?: string }) {
   return (
-    <Card size="sm">
+    <Card size="sm" className="ios-rise" style={{ "--i": i } as React.CSSProperties}>
       <CardHeader>
-        <CardDescription>{label}</CardDescription>
+        <CardDescription className="flex items-center gap-2"><span className={cn("size-2 rounded-full", tint ?? "bg-ios-blue")} />{label}</CardDescription>
         <div className="text-3xl font-semibold tabular-nums leading-none tracking-tight">{value}</div>
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </CardHeader>
@@ -26,7 +26,7 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
 function Step({ n, done, title, body, action }: { n: number; done: boolean; title: string; body: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-start gap-4 py-3">
-      <div className={cn("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium", done ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500" : "text-muted-foreground")}>
+      <div className={cn("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium", done ? "border-transparent bg-ios-green text-white" : "text-muted-foreground")}>
         {done ? <Check className="size-3.5" /> : n}
       </div>
       <div className="min-w-0 flex-1">
@@ -60,14 +60,14 @@ export function OverviewPage() {
     <>
       <PageHeader title="Overview" description="Your desktop apps, boards and recent flashing activity." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Desktop apps online" value={`${s.agents_online}/${data.agents.length}`} hint={data.agents.length ? "paired with your account" : "none paired yet"} />
-        <Stat label="Boards ready" value={s.devices_ready} hint="supported MCUs detected now" />
-        <Stat label="Flashes" value={s.jobs_total} hint={`${s.jobs_ok} completed`} />
-        <Stat label="Success rate" value={rate === null ? "—" : `${rate}%`} hint="confirmed by the desktop app" />
+        <Stat i={0} tint="bg-ios-green" label="Desktop apps online" value={`${s.agents_online}/${data.agents.length}`} hint={data.agents.length ? "paired with your account" : "none paired yet"} />
+        <Stat i={1} tint="bg-ios-blue" label="Boards ready" value={s.devices_ready} hint="supported MCUs detected now" />
+        <Stat i={2} tint="bg-ios-orange" label="Flashes" value={s.jobs_total} hint={`${s.jobs_ok} completed`} />
+        <Stat i={3} tint="bg-ios-purple" label="Success rate" value={rate === null ? "—" : `${rate}%`} hint="confirmed by the desktop app" />
       </div>
 
       {!allDone && (
-        <Card className="mt-6">
+        <Card className="ios-rise mt-6" style={{ "--i": 4 } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Get started</CardTitle>
             <CardDescription>Four steps from install to your first flash.</CardDescription>

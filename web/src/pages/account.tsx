@@ -34,7 +34,7 @@ export function AccountPage() {
     <>
       <PageHeader title="Account" description="Your sign-in and security settings." />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
             <CardDescription>The email you sign in with.</CardDescription>
@@ -52,7 +52,7 @@ export function AccountPage() {
           </CardFooter>
         </Card>
 
-        <Card>
+        <Card className="ios-rise" style={{ "--i": 1 } as React.CSSProperties}>
           <form onSubmit={change}>
             <CardHeader>
               <CardTitle>Change password</CardTitle>

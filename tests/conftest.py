@@ -143,7 +143,7 @@ def stack():
     env = {**os.environ, "NO_COLOR": "1"}
     subprocess.run(["npx", "wrangler", "d1", "migrations", "apply", "mcu-bridge", "--local", "--persist-to", str(persist)], cwd=cloud, check=True, capture_output=True, env=env)
     dev_vars = work / "e2e.vars"
-    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\n")
+    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\n")
     logf = open(work / "wrangler.log", "w")
     proc = subprocess.Popen(["npx", "wrangler", "dev", "--local", "--port", str(PORT), "--persist-to", str(persist), "--env-file", str(dev_vars), "--log-level", "warn"], cwd=cloud, stdout=logf, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     for _ in range(90):

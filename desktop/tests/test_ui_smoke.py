@@ -11,6 +11,7 @@ def test_pages_render(tmp_path, monkeypatch):
     monkeypatch.setenv("MCUBRIDGE_HOME", str(tmp_path))
     monkeypatch.setenv("MCUBRIDGE_SIMULATE", "1")
     monkeypatch.setenv("MCUBRIDGE_SIM_DEVICES", "esp32,avr")
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
 
     from app.core.agent import Agent, JobView
@@ -21,7 +22,7 @@ def test_pages_render(tmp_path, monkeypatch):
     from app.ui.app import MainWindow
 
     app = QApplication.instance() or QApplication([])
-    app.setStyleSheet(theme.QSS)
+    theme.apply("dark", app)
     store = SettingsStore(tmp_path / "s.json")
     creds = CredentialStore(tmp_path / "c.bin")
     hw = HardwareManager(store)
@@ -35,7 +36,7 @@ def test_pages_render(tmp_path, monkeypatch):
     OUT.mkdir(parents=True, exist_ok=True)
     win.show()
     win.refresh()
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "1-pairing.png"))
 
     creds.save("mcb_agent_x")
@@ -50,22 +51,32 @@ def test_pages_render(tmp_path, monkeypatch):
     done.finished_at = time.time() - 120
     agent.state.jobs = [done, j]
     win.go(0)
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "2-dashboard.png"))
     win.go(1)
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "3-activity.png"))
     win.go(2)
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "4-tools.png"))
     win.go(3)
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "4b-account.png"))
     win.go(4)
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "4c-settings.png"))
     win.show_device(devs[0].id)
     win.refresh()
-    app.processEvents()
+    QTest.qWait(700)
     win.grab().save(str(OUT / "5-device.png"))
     assert (OUT / "5-device.png").stat().st_size > 5000
+    # light theme (runtime switch)
+    theme.apply("light", app)
+    win.go(0)
+    QTest.qWait(700)
+    win.grab().save(str(OUT / "6-dashboard-light.png"))
+    win.go(2)
+    QTest.qWait(700)
+    win.grab().save(str(OUT / "7-tools-light.png"))
+    assert theme.MODE == "light" and theme.BG == "#f2f2f7"
+    theme.apply("dark", app)

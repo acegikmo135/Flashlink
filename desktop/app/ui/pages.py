@@ -18,7 +18,7 @@ from app.hardware import serialio, tools
 from app.hardware.devices import HardwareManager
 
 from . import theme
-from .widgets import Bar, Qr, StatusChip, card, hline, label
+from .widgets import Bar, Qr, Segmented, StatusChip, Switch, card, hline, label
 
 
 def ago(t: float | None) -> str:
@@ -282,13 +282,15 @@ class DevicePage(QWidget):
         self.grid.setColumnStretch(1, 1)
         lay.addWidget(fr)
         actions = QHBoxLayout()
-        self.allow = QCheckBox("Allow remote flashing")
+        self.allow = Switch()
         self.allow.clicked.connect(self._toggle_allow)
+        self.allow_label = label("Allow remote flashing", None)
         self.ident = QPushButton("Identify chip")
         self.ident.clicked.connect(lambda: self._cmd("identify"))
         self.reset = QPushButton("Reset")
         self.reset.clicked.connect(lambda: self._cmd("reset"))
         actions.addWidget(self.allow)
+        actions.addWidget(self.allow_label)
         self.get_tools = QPushButton("Install missing tools…")
         self.get_tools.setObjectName("primary")
         self.get_tools.clicked.connect(self.open_tools.emit)
@@ -586,16 +588,31 @@ class SettingsPage(QWidget):
         lay.setSpacing(12)
         lay.addWidget(label("Settings", "h1"))
 
+        lay.addWidget(label("APPEARANCE", "h2"))
+        fr, fl = card()
+        row = QHBoxLayout()
+        row.addWidget(label("Theme", None))
+        row.addStretch(1)
+        self.theme_seg = Segmented([("light", "Light"), ("dark", "Dark"), ("auto", "Auto")], s.theme)
+        self.theme_seg.setFixedWidth(220)
+        self.theme_seg.changed.connect(self._theme)
+        row.addWidget(self.theme_seg)
+        fl.addLayout(row)
+        fl.addWidget(label("Auto follows the Windows light / dark setting.", "dim"))
+        lay.addWidget(fr)
+
         lay.addWidget(label("STARTUP", "h2"))
         fr, fl = card()
-        self.auto = QCheckBox("Start MCU Bridge when I sign in to Windows")
-        self.auto.setChecked(s.start_with_windows)
+        self.auto = Switch(s.start_with_windows)
         self.auto.clicked.connect(self._auto)
-        self.mini = QCheckBox("Start minimised to the system tray")
-        self.mini.setChecked(s.start_minimized)
+        self.mini = Switch(s.start_minimized)
         self.mini.clicked.connect(lambda v: self._set("start_minimized", v))
-        fl.addWidget(self.auto)
-        fl.addWidget(self.mini)
+        for text, sw in (("Start MCU Bridge when I sign in to Windows", self.auto), ("Start minimised to the system tray", self.mini)):
+            r = QHBoxLayout()
+            r.addWidget(label(text, None))
+            r.addStretch(1)
+            r.addWidget(sw)
+            fl.addLayout(r)
         lay.addWidget(fr)
 
         lay.addWidget(label("SECURITY", "h2"))
@@ -656,6 +673,12 @@ class SettingsPage(QWidget):
         setattr(self.agent.store.settings, k, v)
         self.agent.store.save()
 
+    def _theme(self, mode: str) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        self._set("theme", mode)
+        theme.apply(mode, QApplication.instance())
+
     def _auto(self, v: bool) -> None:
         self._set("start_with_windows", v)
         self.apply_autostart(v)
@@ -669,4 +692,5 @@ class SettingsPage(QWidget):
             self.logv.setPlainText("(no log yet)")
 
     def on_show(self) -> None:
+        self.theme_seg.set_value(self.agent.store.settings.theme)
         self._load_log()

@@ -18,7 +18,7 @@ export function DevicesPage() {
   return (
     <>
       <PageHeader title="Devices" description="Boards detected by your desktop apps, live." />
-      <Card>
+      <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
         <CardHeader>
           <CardTitle>Connected boards</CardTitle>
           <CardDescription>Only supported microcontrollers are listed. Remote flashing is controlled per device in the desktop app.</CardDescription>
@@ -53,7 +53,7 @@ export function DevicesPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
+      <Card className="mt-6 ios-rise" style={{ "--i": 1 } as React.CSSProperties}>
         <CardHeader>
           <CardTitle>Desktop apps</CardTitle>
           <CardDescription>Each installation has its own revocable credential.</CardDescription>

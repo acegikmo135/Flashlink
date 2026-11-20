@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Brand } from "@/components/logo"
-import { ThemeToggle } from "@/components/shell"
+import { ThemeSwitch } from "@/components/theme-switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,13 +15,14 @@ import { useSession } from "@/lib/session"
 export function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,color-mix(in_oklab,var(--ios-blue)_16%,transparent),transparent)]" />
       <div className="absolute right-4 top-4">
-        <ThemeToggle />
+        <ThemeSwitch compact />
       </div>
       <div className="mb-8 text-lg">
         <Brand />
       </div>
-      <div className="w-full max-w-sm">{children}</div>
+      <div className="ios-pop relative w-full max-w-sm">{children}</div>
       <p className="mt-8 max-w-sm text-center text-xs text-muted-foreground">Cloud-to-desktop firmware flashing for AI coding agents.</p>
     </div>
   )
@@ -82,7 +83,7 @@ export function AuthPage({ mode }: { mode: "login" | "signup" }) {
             )}
           </CardContent>
           <CardFooter className="mt-6 flex-col gap-3">
-            <Button type="submit" className="w-full" size="lg" disabled={busy}>
+            <Button type="submit" className="h-11 w-full text-[15px]" size="lg" disabled={busy}>
               {busy && <Loader2 className="animate-spin" />}
               {signup ? "Create account" : "Sign in"}
             </Button>

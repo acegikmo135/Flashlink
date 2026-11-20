@@ -91,7 +91,7 @@ def selftest() -> int:
     store, hw, agent = build_core()
     t_import = time.perf_counter()
     app = QApplication([])
-    app.setStyleSheet(theme.QSS)
+    theme.apply("dark", app)
     agent.hw.scan()
     win = MainWindow(agent, hw)
     win.show()

@@ -11,6 +11,8 @@ export interface Env {
   ASSETS: Fetcher;
   /** Where the Windows installer can be downloaded (shown in the dashboard). */
   INSTALLER_URL?: string;
+  /** Optional override of the per-IP pairing-start limit per hour (default 15; raised in tests). */
+  PAIR_START_LIMIT?: string;
   /** Invite code required to create an account (wrangler secret). */
   SIGNUP_CODE: string;
 }
