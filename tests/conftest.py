@@ -144,6 +144,19 @@ def stack():
     subprocess.run(["npx", "wrangler", "d1", "migrations", "apply", "mcu-bridge", "--local", "--persist-to", str(persist)], cwd=cloud, check=True, capture_output=True, env=env)
     dev_vars = work / "e2e.vars"
     dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\n")
+    # fake installer (3 parts) served by the Worker's /download route
+    dl = ROOT / "web" / "dist" / "dl"
+    shutil.rmtree(dl, ignore_errors=True)
+    dl.mkdir(parents=True, exist_ok=True)
+    blob = b"MZ" + secrets.token_bytes(2500)
+    sizes = [1000, 1000, len(blob) - 2000]
+    off = 0
+    parts = []
+    for i, n in enumerate(sizes, 1):
+        (dl / f"MCUBridge-Setup.exe.part{i}").write_bytes(blob[off : off + n])
+        parts.append({"path": f"/dl/MCUBridge-Setup.exe.part{i}", "size": n})
+        off += n
+    (dl / "manifest.json").write_text(json.dumps({"name": "MCUBridge-Setup.exe", "total": len(blob), "sha256": hashlib.sha256(blob).hexdigest(), "parts": parts}))
     logf = open(work / "wrangler.log", "w")
     proc = subprocess.Popen(["npx", "wrangler", "dev", "--local", "--port", str(PORT), "--persist-to", str(persist), "--env-file", str(dev_vars), "--log-level", "warn"], cwd=cloud, stdout=logf, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     for _ in range(90):
@@ -158,6 +171,7 @@ def stack():
 
     s = Stack()
     s.work, s.proc = work, proc
+    s.installer = blob
     s.web = Web()
     st, _ = s.web.post("/api/web/signup", email="e2e@example.com", password="correct-horse-battery", invite=SIGNUP)
     assert st == 200, st
@@ -178,6 +192,7 @@ def stack():
         except subprocess.TimeoutExpired:
             continue
     logf.close()
+    shutil.rmtree(dl, ignore_errors=True)  # never leave test files in the deployable dist
     shutil.rmtree(work, ignore_errors=True)
 
 

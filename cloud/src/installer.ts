@@ -100,7 +100,8 @@ export async function serveInstaller(request: Request, env: Env, ctx: ExecutionC
   const status = range ? 206 : 200;
   if (request.method === "HEAD") return new Response(null, { status, headers });
 
-  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  // FixedLengthStream makes the runtime send Content-Length (browser progress bars, resume checks)
+  const { readable, writable } = new FixedLengthStream(length);
   const pump = (async () => {
     let offset = 0;
     try {
