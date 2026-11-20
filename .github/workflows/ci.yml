@@ -24,6 +24,8 @@ jobs:
       - run: QT_QPA_PLATFORM=offscreen python -m pytest tests -q   # end-to-end: local Worker + agent core + simulated boards
   windows-build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,3 +35,11 @@ jobs:
       - run: cd desktop && python build.py
       - uses: actions/upload-artifact@v4
         with: { name: MCUBridge-win64, path: desktop/dist/MCUBridge-win64.zip }
+      - name: Publish release asset (stable direct link)
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: MCU Bridge desktop (latest build)
+          body: Windows build of commit ${{ github.sha }}. Unsigned; SmartScreen may warn.
+          files: desktop/dist/MCUBridge-win64.zip
