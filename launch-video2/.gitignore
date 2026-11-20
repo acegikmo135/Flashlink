@@ -3,3 +3,6 @@ out/snap_*.png
 out/contact*.png
 out/c*.png
 assets/_c.png
+out/v_*.png
+out/vcheck.png
+out/render.log

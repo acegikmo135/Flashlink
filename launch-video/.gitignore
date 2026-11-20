@@ -4,3 +4,6 @@ out/contact*.png
 out/c*.png
 assets/_c.png
 out/render.log
+out/v_*.png
+out/vcheck.png
+out/render.log
