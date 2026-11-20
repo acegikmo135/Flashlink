@@ -7,6 +7,7 @@
  * to be streamed into the transfer relay (see mcp/server.ts).
  */
 import type { Env } from "../env";
+import { b64decode } from "./bytes";
 
 export const DEFAULT_COMPILER_URL = "https://hexi.wokwi.com/build";
 
@@ -70,23 +71,21 @@ export function normalizeIhex(raw: string): string | null {
   return text;
 }
 
-function b64decode(s: string): Uint8Array {
-  const bin = atob(s);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
+/** Arduino Library Manager names, optionally pinned with @version. Strict charset: the value becomes a line of libraries.txt. */
+export const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9 _.+\-]{0,58}(@[0-9][0-9A-Za-z.\-+]{0,20})?$/;
 
-export async function compileSketch(env: Env, p: { board: string; sketch: string; files: SourceFile[] }): Promise<CompileResult> {
+export async function compileSketch(env: Env, p: { board: string; sketch: string; files: SourceFile[]; libraries?: string[] }): Promise<CompileResult> {
   const b = COMPILE_BOARDS[p.board];
   if (!b) return { ok: false, code: "COMPILE_FAILED", message: `Board '${p.board}' cannot be built in the cloud.` };
+  const files = [...p.files];
+  if (p.libraries?.length) files.push({ name: "libraries.txt", content: p.libraries.join("\n") + "\n" });
   let res: Response;
   try {
     res = await fetch(env.COMPILER_URL || DEFAULT_COMPILER_URL, {
       method: "POST",
       headers: { "content-type": "application/json", "user-agent": "mcu-bridge" },
-      body: JSON.stringify({ sketch: p.sketch, files: p.files, board: b.backend }),
-      signal: AbortSignal.timeout(55_000),
+      body: JSON.stringify({ sketch: p.sketch, files, board: b.backend }),
+      signal: AbortSignal.timeout(85_000), // first use of a library downloads it; builds normally take 3-10 s
     });
   } catch (e) {
     return { ok: false, code: "COMPILER_UNAVAILABLE", message: `The build service did not answer (${e instanceof Error ? e.message : "network error"}). Try again in a minute.` };

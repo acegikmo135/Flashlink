@@ -9,6 +9,18 @@ The user's PC runs the MCU Bridge desktop app. You talk to it through the `mcu-b
 **You build the firmware here; the PC only flashes it.** Never ask the user to open an IDE, COM-port
 tool or flasher.
 
+## Which tool flashes which board (the desktop app handles this — never mix them up)
+| Board family | Flasher used on the PC | Notes |
+|---|---|---|
+| Arduino Uno / Nano / Mega (AVR) | **avrdude** | Never esptool. Serial bootloader (STK500/Arduino). |
+| ESP32 / S2 / S3 / C3 / ESP8266 | **esptool** | Serial ROM bootloader. |
+| STM32 | STM32CubeProgrammer / OpenOCD | needs an ST-Link |
+| CH32V003 | wlink | needs a WCH-LinkE |
+
+Use `family`, `chip` and `missing` from `list_devices`/`get_device_info`. If a tool is missing, tell the user the exact tool name for
+*that device's family* — they install it with the Download button on the Tools page of the desktop app. Never reason about esptool for an Arduino
+or avrdude for an ESP32.
+
 ## Hard rules
 1. **Never say firmware is flashed until `get_flash_job` returns `status: "completed"` with `flash_confirmed: true`.** Any other status means it is not flashed. Report the exact `error.code` and message.
 2. Never guess flash addresses, flash size, mode or frequency. Take them from your build output (ESP-IDF: `build/flasher_args.json`; PlatformIO: the board/partition settings; Arduino CLI: the build's `.bin`/`.hex` plus board config).
@@ -23,9 +35,10 @@ source and the board id (`arduino-uno`, `arduino-nano`, `arduino-nano-old-bootlo
 the PC in one call. Then poll `get_flash_job` (wait_seconds 20) until `is_terminal`; only `completed` + `flash_confirmed=true` is success.
 `compile_firmware` compiles without flashing (returns Intel HEX for AVR) and is useful to check code first.
 - Compile errors come back in `error.details.stderr` — fix the sketch and call again. `COMPILER_UNAVAILABLE` → retry in a minute.
-- Only Arduino built-in libraries (Servo, Wire, SPI, EEPROM, SoftwareSerial…) exist; third-party libraries cannot be installed. Extra files go in `extra_files`.
+- Third-party libraries: list them in `libraries` by Arduino Library Manager name (`"Adafruit NeoPixel"`, `"DHT sensor library@1.4.6"`; max 10). Pin versions (`@x.y.z`) so rebuilds are reproducible. Built-ins (Servo, Wire, SPI, EEPROM, SoftwareSerial, WiFi…) need no entry. Extra files go in `extra_files`.
 - Pick the board from `identify_mcu`/`list_devices`; for an FTDI/CH340 Nano that fails at 115200 use `arduino-nano-old-bootloader` (the desktop also retries at 57600 automatically).
-- ESP32 builds are application-only (flashed at 0x10000): the chip needs the Arduino-ESP32 bootloader/partition table already (true if it ever ran an Arduino sketch).
+- ESP32 builds are flashed as a COMPLETE image (bootloader 0x1000, partition table 0x8000, boot_app0 0xe000, app 0x10000), so a blank chip boots. Pass `full_image:false` to update only the app (keeps existing bootloader/partitions). App limit is 1.25 MB.
+- **Build history:** every successful build is recorded (hashes/sizes/libraries/your source — never firmware). `list_builds` shows it; `flash_build {build_id}` re-flashes an earlier build by rebuilding and checking its SHA-256 (`BUILD_CHANGED` if the output differs, e.g. an unpinned library updated; `allow_changed:true` overrides). `delete_build` removes one. Responses include `seen_before` when identical inputs were built earlier.
 - The source is compiled by a public cloud build service (Wokwi); tell the user if the code is sensitive.
 
 ## Workflow (with your own toolchain)

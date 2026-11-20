@@ -39,6 +39,21 @@ def _conf_args(exe: str) -> list[str]:
     return ["-C", str(conf)] if conf.is_file() else []
 
 
+ARDUINO_VID = 0x2341
+USB_UART_BRIDGE_VIDS = {0x0403, 0x1A86, 0x10C4}  # FTDI, CH340/CH341, CP210x — what Nano boards use
+
+
+def pick_board(answered_as: str, chip: str, vid: int | None) -> str:
+    """Map (which probe answered, chip signature, USB vendor) to one board id."""
+    if "2560" in chip:
+        return "arduino-mega2560"
+    if answered_as == "arduino-nano-old-bootloader":
+        return "arduino-nano-old-bootloader"
+    if vid in USB_UART_BRIDGE_VIDS:
+        return "arduino-nano"
+    return "arduino-uno"
+
+
 class AvrFlasher(Flasher):
     name = "avrdude"
 
@@ -55,6 +70,13 @@ class AvrFlasher(Flasher):
         return [t.path, *_conf_args(t.path), "-p", b["avr_part"], "-c", b["avr_programmer"], "-P", win_port(dev.port), "-b", str(b["default_baud"])]
 
     def identify(self, dev: DeviceRef, cancel: threading.Event | None = None) -> dict:
+        """Find which bootloader answers (115200 → 57600 → Mega/wiring) and name the exact board.
+
+        - answers at 57600            → Nano with the old bootloader
+        - ATmega2560 signature         → Mega 2560
+        - answers at 115200 (m328p)    → Uno when the USB identity is Arduino's own (VID 2341) or when it is unknown/CH340-less;
+                                          Nano (new bootloader) when behind an FTDI/CH340/CP210x bridge, as on Nano boards.
+        """
         tried: list[str] = []
         for board_id in ("arduino-uno", "arduino-nano-old-bootloader", "arduino-mega2560"):
             if cancel is not None and cancel.is_set():
@@ -65,14 +87,14 @@ class AvrFlasher(Flasher):
             m = re.search(r"signature\s*(?:=|is)?\s*0x([0-9a-fA-F]{6})", text)
             if m and m.group(1).lower() in _SIGNATURES:
                 chip, _ = _SIGNATURES[m.group(1).lower()]
-                board = "arduino-mega2560" if "2560" in chip else board_id
-                return {"family": "avr", "chip": chip, "board": board}
+                board = pick_board(board_id, chip, getattr(dev, "vid", None))
+                return {"family": "avr", "chip": chip, "board": board, "baud_rate": BOARDS[board_id]["default_baud"], "board_label": BOARDS[board]["label"]}
             code, msg = classify_failure(r.lines)
             if code in ("SERIAL_ERROR", "TOOLCHAIN_MISSING"):
                 raise FlashError(code, msg, r.tail(10))  # not a bootloader problem: say so immediately
             b = BOARDS[board_id]
             tried.append(f"[{b['avr_programmer']} @ {b['default_baud']}] " + (" | ".join(r.lines[-3:]) or "(no output)"))
-        raise FlashError("PROBE_FAILED", "No AVR bootloader answered at 115200 (Uno), 57600 (old Nano/Duemilanove) or as Mega 2560. The port opens fine, so check that this really is an AVR Arduino, the USB cable, and that no other program is using the port.", "\n".join(tried)[-1500:])
+        raise FlashError("PROBE_FAILED", "No AVR bootloader answered at 115200 (Uno / new Nano), 57600 (old-bootloader Nano/Duemilanove) or as Mega 2560. The port opens fine, so check that this really is an AVR Arduino, the USB cable, and that no other program is using the port.", "\n".join(tried)[-1500:])
 
     def run(self, req: FlashRequest) -> FlashOutcome:
         m = req.manifest

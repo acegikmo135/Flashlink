@@ -65,7 +65,7 @@ def test_identify_finds_old_bootloader_at_57600(fake, monkeypatch):
     exe, calls = fake
     monkeypatch.setenv("FAKE_ANSWERS_AT", "57600")
     info = AvrFlasher().identify(DEV)
-    assert info == {"family": "avr", "chip": "ATmega328P", "board": "arduino-nano-old-bootloader"}
+    assert info["family"] == "avr" and info["chip"] == "ATmega328P" and info["board"] == "arduino-nano-old-bootloader" and info["baud_rate"] == 57600
     bauds = [c[c.index("-b") + 1] for c in calls()]
     assert bauds[:2] == ["115200", "57600"]  # Uno speed first, then the old-bootloader speed
 
@@ -139,3 +139,14 @@ def test_ambiguous_ftdi_device_asks_the_avr_bootloader_first():
 
 
 _ = os
+
+
+def test_pick_board_names_the_exact_arduino():
+    from app.hardware.flashers.avr import pick_board
+
+    assert pick_board("arduino-uno", "ATmega2560", None) == "arduino-mega2560"
+    assert pick_board("arduino-nano-old-bootloader", "ATmega328P", 0x0403) == "arduino-nano-old-bootloader"  # speed decides
+    assert pick_board("arduino-uno", "ATmega328P", 0x2341) == "arduino-uno"       # genuine Arduino USB identity
+    assert pick_board("arduino-uno", "ATmega328P", 0x0403) == "arduino-nano"      # FTDI bridge, 115200 → new-bootloader Nano
+    assert pick_board("arduino-uno", "ATmega328P", 0x1A86) == "arduino-nano"      # CH340
+    assert pick_board("arduino-uno", "ATmega328P", None) == "arduino-uno"

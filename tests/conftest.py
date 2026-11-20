@@ -162,7 +162,8 @@ class MockCompiler:
                 if "undefined_fn" in src:
                     out = {"stdout": "\n", "stderr": "/sketch/sketch.ino:1:15: error: 'undefined_fn' was not declared in this scope\nError during build: exit status 1\n", "hex": "", "eep": ""}
                 elif body["board"] == "esp32":
-                    out = {"stdout": "Sketch uses 3072 bytes (0%) of program storage space. Maximum is 1310720 bytes.\n", "stderr": "", "hex": base64.b64encode(outer.esp_bin).decode(), "eep": ""}
+                    big = b"\0" * 1_400_000 if "BIG_APP" in src else b""
+                    out = {"stdout": "Sketch uses 3072 bytes (0%) of program storage space. Maximum is 1310720 bytes.\n", "stderr": "", "hex": base64.b64encode(outer.esp_bin + big).decode(), "eep": ""}
                 else:
                     out = {"stdout": "Sketch uses 924 bytes (2%) of program storage space. Maximum is 32256 bytes.\nGlobal variables use 9 bytes (0%) of dynamic memory.\n", "stderr": "", "hex": outer.avr_hex, "eep": ":00000001FF\r\n"}
                 data = json.dumps(out).encode()
@@ -197,7 +198,7 @@ def stack():
     subprocess.run(["npx", "wrangler", "d1", "migrations", "apply", "mcu-bridge", "--local", "--persist-to", str(persist)], cwd=cloud, check=True, capture_output=True, env=env)
     compiler = MockCompiler()
     dev_vars = work / "e2e.vars"
-    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\nCOMPILER_URL=http://127.0.0.1:{compiler.port}/build\n")
+    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\nCOMPILE_LIMIT=1000\nCOMPILER_URL=http://127.0.0.1:{compiler.port}/build\n")
     # fake installer (3 parts) served by the Worker's /download route
     dl = ROOT / "web" / "dist" / "dl"
     shutil.rmtree(dl, ignore_errors=True)

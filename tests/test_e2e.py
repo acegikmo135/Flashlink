@@ -36,7 +36,7 @@ def test_signup_requires_invite(stack):
 def test_mcp_lists_all_tools(stack):
     s, d = stack.mcp.rpc("tools/list")
     names = {t["name"] for t in d["result"]["tools"]}
-    assert names == {"list_devices", "get_device_info", "identify_mcu", "get_device_status", "detect_new_devices", "flash_firmware", "get_flash_job", "cancel_flash_job", "verify_flash", "reset_device", "read_serial", "capture_boot_log", "get_flash_history", "get_supported_boards", "compile_firmware", "build_and_flash"}
+    assert names == {"list_devices", "get_device_info", "identify_mcu", "get_device_status", "detect_new_devices", "flash_firmware", "get_flash_job", "cancel_flash_job", "verify_flash", "reset_device", "read_serial", "capture_boot_log", "get_flash_history", "get_supported_boards", "compile_firmware", "build_and_flash", "list_builds", "flash_build", "delete_build"}
     for t in d["result"]["tools"]:
         assert t["description"] and t["inputSchema"]["type"] == "object" and t["inputSchema"].get("additionalProperties") is False
 

@@ -93,3 +93,80 @@ describe("device selection", () => {
     expect(selectDevice([bt, bt2], { a1: agent(true) })).toMatchObject({ ok: false, error: { code: "NO_DEVICE" } });
   });
 });
+
+import { ESP32_BOOT } from "../src/compile/esp32-boot";
+import { LIBRARY_NAME, espHeader, normalizeIhex } from "../src/compile/backend";
+import { parseRange } from "../src/installer";
+
+describe("embedded ESP32 boot components (blank-chip support)", () => {
+  const sha = (b: Uint8Array) => sha256Hex(b);
+  it("match their recorded hashes and sizes", async () => {
+    for (const c of [ESP32_BOOT.bootloader, ESP32_BOOT.partitions, ESP32_BOOT.boot_app0]) {
+      expect(c.data.length).toBe(c.size);
+      expect(await sha(c.data)).toBe(c.sha256);
+    }
+    // boot_app0 is byte-identical to the one in a job that really booted on hardware
+    expect(ESP32_BOOT.boot_app0.sha256).toBe("f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0");
+  });
+  it("bootloader is a classic-ESP32 DIO image with a header compatible with the app", () => {
+    const b = ESP32_BOOT.bootloader.data;
+    expect(b[0]).toBe(0xe9);
+    expect(b[1]).toBe(3); // segments
+    expect(espHeader(b)).toEqual({ mode: "dio", frequency: "80m", flash_size: "4MB" });
+    expect(b[12] | (b[13] << 8)).toBe(0); // chip id 0 = ESP32
+    expect(ESP32_BOOT.bootloader.address).toBe(0x1000);
+  });
+  it("partition table has the app where the app image is flashed and fits the size limit", () => {
+    const t = ESP32_BOOT.partitions.data;
+    const dv = new DataView(t.buffer, t.byteOffset);
+    const entries: Record<string, { type: number; sub: number; off: number; size: number }> = {};
+    for (let o = 0; o + 32 <= t.length && t[o] === 0xaa && t[o + 1] === 0x50; o += 32) {
+      const name = new TextDecoder().decode(t.subarray(o + 12, o + 28)).replace(/\0.*$/, "");
+      entries[name] = { type: t[o + 2], sub: t[o + 3], off: dv.getUint32(o + 4, true), size: dv.getUint32(o + 8, true) };
+    }
+    expect(entries.app0).toEqual({ type: 0, sub: 0x10, off: 0x10000, size: 0x140000 });
+    expect(entries.otadata.off).toBe(0xe000);
+    expect(entries.nvs.off).toBe(0x9000);
+    expect(ESP32_BOOT.app_offset).toBe(entries.app0.off);
+    expect(ESP32_BOOT.app_max_bytes).toBe(entries.app0.size);
+    expect(ESP32_BOOT.boot_app0.address).toBe(0xe000);
+    expect(ESP32_BOOT.partitions.address).toBe(0x8000);
+    // regions do not overlap each other or the app
+    expect(ESP32_BOOT.bootloader.address + ESP32_BOOT.bootloader.size).toBeLessThanOrEqual(ESP32_BOOT.partitions.address);
+    expect(ESP32_BOOT.boot_app0.address + ESP32_BOOT.boot_app0.size).toBeLessThanOrEqual(ESP32_BOOT.app_offset);
+  });
+});
+
+describe("library names (become lines of libraries.txt)", () => {
+  it("accepts Library Manager names, optionally pinned", () => {
+    for (const ok of ["Adafruit NeoPixel", "DHT sensor library@1.4.6", "PubSubClient", "ArduinoJson@7.0.4", "LiquidCrystal I2C", "Adafruit_GFX_Library"]) expect(LIBRARY_NAME.test(ok), ok).toBe(true);
+  });
+  it("rejects anything that could smuggle extra lines or paths", () => {
+    for (const bad of ["", "x\nmalicious", "a\rb", "../evil", "lib;rm -rf /", "$(whoami)", "x".repeat(80), " leading", "a@", "a@v1", "https://evil.example/lib.zip", "name`cmd`"]) expect(LIBRARY_NAME.test(bad), JSON.stringify(bad)).toBe(false);
+  });
+});
+
+describe("ihex normalisation", () => {
+  it("normalises CRLF and requires the EOF record", () => {
+    expect(normalizeIhex(":02000000FFCF30\r\n:00000001FF\r\n")).toBe(":02000000FFCF30\n:00000001FF\n");
+    expect(normalizeIhex(":02000000FFCF30\n")).toBeNull();
+    expect(normalizeIhex("not hex")).toBeNull();
+  });
+  it("range parser", () => {
+    expect(parseRange("bytes=0-9", 100)).toEqual({ start: 0, end: 9 });
+    expect(parseRange("bytes=90-", 100)).toEqual({ start: 90, end: 99 });
+    expect(parseRange("bytes=-10", 100)).toEqual({ start: 90, end: 99 });
+    expect(parseRange("bytes=200-", 100)).toBe("invalid");
+  });
+});
+
+import { buildIdFor, cacheKey } from "../src/compile/builds";
+describe("build cache key", () => {
+  const base = { board: "arduino-uno", sketch: "void setup(){}", files: [{ name: "a.h", content: "1" }, { name: "b.h", content: "2" }], libraries: ["X", "Y@1.0.0"] };
+  it("is stable and order-independent but sensitive to every input", async () => {
+    const k = await cacheKey(base);
+    expect(await cacheKey({ ...base, files: [...base.files].reverse(), libraries: ["Y@1.0.0", "X"] })).toBe(k);
+    for (const changed of [{ board: "arduino-nano" }, { sketch: "x" }, { libraries: ["X"] }, { files: [{ name: "a.h", content: "9" }, base.files[1]] }]) expect(await cacheKey({ ...base, ...changed })).not.toBe(k);
+    expect(buildIdFor(k)).toMatch(/^bld_[0-9a-f]{12}$/);
+  });
+});

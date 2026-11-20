@@ -358,29 +358,36 @@ def fade_in(container: QWidget, ms: int = 280) -> None:
 _ = (QPushButton, _GLYPHS)
 
 
+def logo_pixmap(size: int):
+    """The app logo (blue tile, chip + cloud) scaled crisply for `size` logical px."""
+    import base64
+
+    from PySide6.QtGui import QGuiApplication, QPixmap
+
+    from .logo_data import LOGO_PNG_B64
+
+    dpr = QGuiApplication.primaryScreen().devicePixelRatio() if QGuiApplication.primaryScreen() else 1.0
+    pm = QPixmap()
+    pm.loadFromData(base64.b64decode(LOGO_PNG_B64), "PNG")
+    pm = pm.scaled(int(size * dpr), int(size * dpr), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    pm.setDevicePixelRatio(dpr)
+    return pm
+
+
 class BrandMark(QWidget):
-    """Logo mark: rounded square with an inner square outline and a dot (same glyph as the web app)."""
+    """Logo mark: blue rounded tile with a chip + cloud (same glyph as the web app)."""
 
     def __init__(self, size: int = 26) -> None:
         super().__init__()
         self._s = size
         self.setFixedSize(size, size)
+        self._pm = None
 
     def paintEvent(self, _e) -> None:
+        if self._pm is None:
+            self._pm = logo_pixmap(self._s)
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        s = float(self._s)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(theme.FG))
-        p.drawRoundedRect(QRectF(0, 0, s, s), s * 0.23, s * 0.23)
-        pen = QPen(QColor(theme.BG))
-        pen.setWidthF(s * 0.078)
-        p.setPen(pen)
-        p.setBrush(Qt.NoBrush)
-        p.drawRect(QRectF(s * 0.25, s * 0.25, s * 0.5, s * 0.5))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(theme.BG))
-        p.drawEllipse(QPointF(s / 2, s / 2), s * 0.094, s * 0.094)
+        p.drawPixmap(0, 0, self._pm)
 
 
 class NavButton(QPushButton):

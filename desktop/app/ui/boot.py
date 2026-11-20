@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import QLockFile, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 
@@ -40,19 +40,10 @@ class Splash(QWidget):
         p.setBrush(QColor(bg))
         p.drawRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), 22, 22)
         # logo mark
+        from .widgets import logo_pixmap
+
         s = 52.0
-        x, y = (self.width() - s) / 2, 38.0
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(fg))
-        p.drawRoundedRect(QRectF(x, y, s, s), s * 0.23, s * 0.23)
-        pen = QPen(QColor(bg))
-        pen.setWidthF(s * 0.078)
-        p.setPen(pen)
-        p.setBrush(Qt.NoBrush)
-        p.drawRect(QRectF(x + s * 0.25, y + s * 0.25, s * 0.5, s * 0.5))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(bg))
-        p.drawEllipse(QRectF(x + s * 0.5 - s * 0.094, y + s * 0.5 - s * 0.094, s * 0.188, s * 0.188))
+        p.drawPixmap(int((self.width() - s) / 2), 38, logo_pixmap(int(s)))
         f = QFont("Segoe UI Variable Display")
         f.setPixelSize(19)
         f.setWeight(QFont.Bold)
