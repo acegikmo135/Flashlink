@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
         elif key == "Activity":
             w = ActivityPage(self.agent)
         elif key == "Tools":
-            w = ToolsPage(self.agent.rescan_now)
+            w = ToolsPage(lambda: __import__("threading").Thread(target=self.agent.refresh_toolchains, daemon=True).start())
         elif key == "Account":
             w = AccountPage(self.agent)
             w.signed_out.connect(self.refresh)  # type: ignore[attr-defined]
@@ -263,11 +263,11 @@ class MainWindow(QMainWindow):
         self.user_card.set(st.account_email or self.agent.store.settings.account_email, label_, color)
 
 
-def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidden: bool = False) -> int:
+def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidden: bool = False, app: QApplication | None = None, splash=None) -> int:
     import asyncio
     import threading
 
-    app = QApplication(sys.argv[:1])
+    app = app or QApplication(sys.argv[:1])
     app.setApplicationName("MCU Bridge")
     app.setQuitOnLastWindowClosed(False)
     theme.apply(store.settings.theme, app)
@@ -278,11 +278,6 @@ def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidde
     f = QFont()
     f.setPointSize(10)
     app.setFont(f)
-
-    lock = QLockFile(str(data_dir() / "app.lock"))
-    lock.setStaleLockTime(0)
-    if not lock.tryLock(100):
-        return 0  # already running
 
     bridge = Bridge()
     agent.on_change = bridge.changed.emit
@@ -355,6 +350,6 @@ def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidde
         fade.setEndValue(1.0)
         fade.setEasingCurve(QEasingCurve.OutCubic)
         fade.start(QPropertyAnimation.DeleteWhenStopped)
-    code = app.exec()
-    lock.unlock()
-    return code
+    if splash is not None:
+        splash.close()
+    return app.exec()

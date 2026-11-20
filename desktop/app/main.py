@@ -195,13 +195,31 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["MCUBRIDGE_SIMULATE"] = "1"
     if args.server:
         os.environ["MCUBRIDGE_SERVER"] = args.server
-    _setup_logging(args.verbose, args.headless)
-    store, hw, agent = build_core()
     if args.headless:
+        _setup_logging(args.verbose, True)
+        _store, _hw, agent = build_core()
         return run_headless(agent)
+
+    # GUI: paint a splash BEFORE the heavy imports so the user gets instant feedback
+    from PySide6.QtWidgets import QApplication
+
+    from app.core.config import data_dir
+    from app.ui.boot import acquire_single_instance_lock, show_splash
+
+    lock = acquire_single_instance_lock(str(data_dir() / "app.lock"))
+    if lock is None:
+        return 0  # already running (it lives in the tray)
+    app = QApplication(sys.argv[:1])
+    splash = None if args.minimized else show_splash(app)
+    _setup_logging(args.verbose, False)
+    store, hw, agent = build_core()
+    if splash:
+        splash.set_message("Loading…")
     from app.ui.app import run_gui
 
-    return run_gui(store, hw, agent, start_hidden=args.minimized or store.settings.start_minimized)
+    code = run_gui(store, hw, agent, start_hidden=args.minimized or store.settings.start_minimized, app=app, splash=splash)
+    lock.unlock()
+    return code
 
 
 if __name__ == "__main__":

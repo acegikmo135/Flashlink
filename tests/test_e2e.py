@@ -241,3 +241,20 @@ def test_revoke_disconnects_agent(stack, tmp_path):
         assert s == 401
     finally:
         r.stop()
+
+
+def test_tool_install_is_pushed_to_the_cloud(agent, stack, monkeypatch):
+    """Regression: Claude saw 'avrdude unavailable' after the user installed it, because tools were only sent at connect."""
+    from app.hardware import tools as T
+
+    def agents():
+        return stack.mcp.call("list_devices")["agents"]
+
+    assert agents()[0]["toolchains"].get("avrdude", {}).get("available") is False
+    fake = {n: T.Tool(n, n in ("esptool", "avrdude"), "x", "8.0" if n == "avrdude" else None) for n in ("esptool", "avrdude", "stm32cube", "openocd", "wlink")}
+    monkeypatch.setattr(T, "all_tools", lambda refresh=False: fake)
+    agent.agent.refresh_toolchains()
+    deadline = time.time() + 10
+    while time.time() < deadline and not agents()[0]["toolchains"].get("avrdude", {}).get("available"):
+        time.sleep(0.3)
+    assert agents()[0]["toolchains"]["avrdude"] == {"available": True, "version": "8.0"}

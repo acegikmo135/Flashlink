@@ -78,6 +78,7 @@ class HardwareManager:
             self._ident = {}
         self._prog_cache: list[usb.UsbPort] = []
         self._prog_at = 0.0
+        self._born = time.monotonic()
         self.devices: dict[str, Device] = {}
         self.busy: dict[str, str] = {}  # device id -> reason/job id
 
@@ -112,7 +113,8 @@ class HardwareManager:
         else:
             ports = usb.scan_serial_ports()
             now = time.monotonic()
-            if force_programmers or now - self._prog_at > self.PROGRAMMER_SCAN_INTERVAL:
+            # the (comparatively expensive) PnP query is held back for a few seconds so start-up stays snappy
+            if force_programmers or (now - self._prog_at > self.PROGRAMMER_SCAN_INTERVAL and now - self._born > 4.0):
                 self._prog_cache = usb.scan_programmers()
                 self._prog_at = now
             have = {(p.vid, p.pid, p.serial_number) for p in ports}

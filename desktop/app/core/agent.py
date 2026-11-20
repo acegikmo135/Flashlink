@@ -97,6 +97,7 @@ class Agent:
         self._active: set[str] = set()
         self._seen_jobs: set[str] = set()
         self._last_devices_json = ""
+        self._last_tools_json = ""
         self._lock = threading.RLock()
         self._ws_ref: Any = None
         self._wake: asyncio.Event | None = None
@@ -243,7 +244,8 @@ class Agent:
         self._ws_ref = ws
         last_pong = time.monotonic()
         try:
-            self.state.toolchains = {n: {"available": t.available, "version": t.version, "path": t.path, "hint": t.hint} for n, t in tools.all_tools().items()}
+            self.state.toolchains = {n: {"available": t.available, "version": t.version, "path": t.path, "hint": t.hint} for n, t in tools.all_tools(True).items()}
+            self._last_tools_json = json.dumps(self._tool_snapshot(False), sort_keys=True)
             await ws.send(json.dumps({
                 "type": "hello", "agent_version": APP_VERSION, "protocol": 1, "hostname": self.store.settings.device_name,
                 "os": f"{platform.system()} {platform.release()}",
@@ -278,7 +280,16 @@ class Agent:
                     await asyncio.sleep(1.0)
                     await self._send_devices(ws)
 
-            tasks = [asyncio.create_task(c()) for c in (pinger, sender, devices_sync)]
+            async def toolchain_sync() -> None:
+                while True:  # tools can appear/disappear while running (Download button, manual install)
+                    await asyncio.sleep(30)
+                    snap = await asyncio.to_thread(self._tool_snapshot, True)
+                    js = json.dumps(snap, sort_keys=True)
+                    if js != self._last_tools_json:
+                        self._last_tools_json = js
+                        await ws.send(json.dumps({"type": "toolchains", "toolchains": snap}))
+
+            tasks = [asyncio.create_task(c()) for c in (pinger, sender, devices_sync, toolchain_sync)]
             try:
                 async for raw in ws:
                     if raw == "pong":
@@ -336,6 +347,21 @@ class Agent:
                 self._wake.clear()  # type: ignore[union-attr]
             except asyncio.TimeoutError:
                 pass
+
+    @staticmethod
+    def _tool_snapshot(refresh: bool) -> dict:
+        return {n: {"available": t.available, "version": t.version} for n, t in tools.all_tools(refresh).items()}
+
+    def refresh_toolchains(self) -> None:
+        """Thread-safe: re-probe the tools and tell the cloud right away (called after a tool is installed/removed)."""
+        snap = self._tool_snapshot(True)
+        self.state.toolchains = {n: {**v, "path": None, "hint": ""} for n, v in snap.items()}
+        js = json.dumps(snap, sort_keys=True)
+        if js != self._last_tools_json:
+            self._last_tools_json = js
+            self.post({"type": "toolchains", "toolchains": snap})
+        self.rescan_now()  # device records carry a per-device "missing tooling" list
+        self._notify()
 
     def rescan_now(self) -> None:
         """Thread-safe: UI / OS device-change notification."""

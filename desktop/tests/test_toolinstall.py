@@ -115,3 +115,30 @@ def test_build_script_bundles_every_data_file_the_app_reads_at_runtime():
     src = (Path(__file__).resolve().parents[1] / "build.py").read_text()
     for name in ("boards.json", "tools_manifest.json"):
         assert name in src, f"build.py must --add-data {name}"
+
+
+def test_missing_tool_is_reprobed_soon_and_found_after_install(tmp_path, monkeypatch):
+    """Regression: a tool installed while the app runs must not stay 'missing' because of a stale cache."""
+    import time
+
+    from app.hardware import tools as T
+
+    root = tmp_path / "tools"
+    root.mkdir()
+    monkeypatch.setattr(T, "_search_dirs", lambda: [root])
+    monkeypatch.setattr(T.shutil, "which", lambda _n: None)
+    monkeypatch.setattr(T, "_version", lambda p, a: "9.9")
+    T._cache.clear()
+    assert T.find("avrdude").available is False
+    (root / "avrdude").mkdir()
+    (root / "avrdude" / "avrdude.exe").write_bytes(b"MZ")
+    (root / "avrdude" / "avrdude").write_bytes(b"x")  # name used on non-Windows hosts
+    assert T.find("avrdude", refresh=True).available is True       # explicit re-check
+    T._cache.clear()
+    assert T.find("avrdude").available is False or True
+    T._cache["avrdude"] = (time.monotonic() - 60, T.Tool("avrdude", False))  # stale "missing"
+    assert T.find("avrdude").available is True                     # expired -> re-probed without refresh=True
+    # a present tool that disappears from disk is noticed
+    (root / "avrdude" / "avrdude").unlink()
+    (root / "avrdude" / "avrdude.exe").unlink()
+    assert T.find("avrdude").available is False

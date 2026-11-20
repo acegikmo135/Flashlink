@@ -75,23 +75,37 @@ def _version(path: str, args: list[str]) -> str | None:
     return m.group(1) if m else None
 
 
-_cache: dict[str, Tool] = {}
+import time as _time
+
+_cache: dict[str, tuple[float, Tool]] = {}
+_MISSING_TTL = 8.0     # a tool that was missing is re-probed quickly (it may have just been installed)
+_PRESENT_TTL = 300.0   # a tool that was found is re-verified (still on disk?) after a while
 
 
 def find(name: str, refresh: bool = False) -> Tool:
     if name == "esptool":
-        try:
-            import esptool  # bundled Python package
+        import importlib.util
 
-            return Tool("esptool", True, "built-in", getattr(esptool, "__version__", None))
-        except ImportError:
+        if importlib.util.find_spec("esptool") is None:  # no import: esptool + cryptography are slow to load
             return Tool("esptool", False, hint="esptool Python package is missing from this build.")
-    if not refresh and name in _cache:
-        return _cache[name]
+        ver = None
+        try:
+            from importlib.metadata import version
+
+            ver = version("esptool")
+        except Exception:
+            pass
+        return Tool("esptool", True, "built-in", ver)
+    hit = _cache.get(name)
+    if not refresh and hit:
+        age = _time.monotonic() - hit[0]
+        t0 = hit[1]
+        if (t0.available and age < _PRESENT_TTL and (not t0.path or Path(t0.path).exists())) or (not t0.available and age < _MISSING_TTL):
+            return t0
     p = _which(EXE[name])
     ver_args = {"avrdude": ["-?"], "stm32cube": ["--version"], "openocd": ["--version"], "wlink": ["--version"]}[name]
     t = Tool(name, bool(p), p, _version(p, ver_args) if p else None, "" if p else HINTS[name])
-    _cache[name] = t
+    _cache[name] = (_time.monotonic(), t)
     return t
 
 

@@ -197,6 +197,8 @@ export class UserHub extends DurableObject<Env> {
         return this.onHello(agentId, ws, msg);
       case "devices":
         return this.onDevices(agentId, msg.devices);
+      case "toolchains":
+        return this.onToolchains(agentId, msg.toolchains);
       case "job.update":
         return this.onJobUpdate(agentId, msg);
       case "job.result":
@@ -266,6 +268,15 @@ export class UserHub extends DurableObject<Env> {
         await this.finishJob(job, "failed", { code: "AGENT_DISCONNECTED", message: "The desktop app restarted while this job was running." });
       }
     }
+  }
+
+  /** The desktop re-reports its tools whenever one is installed/removed (Tools page, or the 30 s re-check). */
+  private async onToolchains(agentId: string, raw: unknown) {
+    const agent = this.state.agents[agentId];
+    if (!agent) return;
+    agent.toolchains = sanitizeToolchains(raw);
+    await this.saveState();
+    this.registrySignal.notify();
   }
 
   private async onDevices(agentId: string, list: unknown) {
