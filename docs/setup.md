@@ -24,6 +24,12 @@ Open `<worker-url>/signup` → create an account with the invite code → on the
 
 ## 3. Install the Windows app
 
+**Fast direct download (no GitHub login):** `https://<your-worker>.workers.dev/download/MCUBridge-Setup.exe` — served from Cloudflare's
+edge by the Worker (static-asset parts + Range/resume support). To publish a new installer after building it:
+`cd web && npm run build && cd .. && node scripts/publish-installer.mjs desktop/dist/MCUBridge-Setup.exe && cd cloud && npx wrangler deploy`.
+(Until one is published the route falls back to the GitHub release.)
+
+
 Download **MCUBridge-Setup.exe** (GitHub release `desktop-latest`, or the CI artifact) and run it. It is a per-user installer:
 no administrator rights, installs to `%LOCALAPPDATA%\Programs\MCU Bridge`, adds a Start-menu entry, and optionally
 starts with Windows. (Unsigned build: SmartScreen may show "More info → Run anyway".) A portable `MCUBridge-win64.zip`
