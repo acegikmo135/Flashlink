@@ -164,8 +164,12 @@ def test_credential_store_roundtrip_and_permissions(tmp_path):
     assert s.load() is None
     s.save("mcb_agent_secret")
     assert s.load() == "mcb_agent_secret"
-    assert (tmp_path / "c.bin").stat().st_mode & 0o077 == 0
-    assert b"secret" not in (tmp_path / "c.bin").read_bytes() or True  # PLAIN fallback is base64 on non-Windows (dev only)
+    import sys
+
+    if sys.platform == "win32":  # DPAPI: the blob must not contain the plaintext token
+        assert b"mcb_agent_secret" not in (tmp_path / "c.bin").read_bytes()
+    else:  # dev fallback: owner-only file permissions
+        assert (tmp_path / "c.bin").stat().st_mode & 0o077 == 0
     s.clear()
     assert s.load() is None
 
