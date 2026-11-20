@@ -1,0 +1,50 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+.row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(60,60,67,.16);font-size:36px;opacity:0}
+.row:last-child{border-bottom:none}
+.k{color:rgba(60,60,67,.6);font-weight:500}.v{font-weight:600;display:flex;align-items:center;gap:16px;font-variant-numeric:tabular-nums}
+
+#w{position:absolute;inset:0;background:#007aff}
+#lt{left:120px;top:100px;color:#fff;opacity:0}
+#lw{position:absolute;left:140px;top:330px;width:1160px;height:368px}
+#lc{position:absolute;left:140px;top:742px;font-size:44px;font-weight:500;color:rgba(255,255,255,.92);opacity:0;white-space:nowrap}
+.ck{stroke-dasharray:1;stroke-dashoffset:1}
+.k{color:#111!important;font-weight:600!important}
+</style>
+  <div id="root" data-composition-id="libs" data-width="1920" data-height="1080">
+
+    <div id="w"><div id="lt" class="title">Any library you need.</div><div id="lw"><div id="card" class="shadow" style="position:absolute;left:0;top:0;width:1160px;height:368px;border-radius:28px;background:#fff;padding:28px 52px"><div class="row" style="height:104px"><span class="k">Adafruit NeoPixel</span><span class="v"><span style="color:rgba(60,60,67,.6);font-weight:500">latest</span><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="12" r="12" fill="#34c759"/><path class="ck" d="M6.5 12.5l3.8 3.8 7.2-7.6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg></span></div><div class="row" style="height:104px"><span class="k">DHT sensor library</span><span class="v"><span style="color:rgba(60,60,67,.6);font-weight:500">@1.4.6</span><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="12" r="12" fill="#34c759"/><path class="ck" d="M6.5 12.5l3.8 3.8 7.2-7.6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg></span></div><div class="row" style="height:104px"><span class="k">ArduinoJson</span><span class="v"><span style="color:rgba(60,60,67,.6);font-weight:500">@7.0.4</span><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="12" r="12" fill="#34c759"/><path class="ck" d="M6.5 12.5l3.8 3.8 7.2-7.6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg></span></div></div></div><div id="lc">Pin a version and a rebuild stays identical.</div></div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    tl.fromTo('#lt', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .2, ease: 'power4.out' }, 0.15);
+    tl.fromTo('#card', { x: 60, opacity: 0, filter: 'blur(12px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'expo.out' }, 0.2);
+    $$('.row').forEach((r, i) => tl.fromTo(r, { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: .3, ease: 'power3.out' }, 0.6 + i * .3));
+    $$('.ck').forEach((c, i) => tl.to(c, { strokeDashoffset: 0, duration: .3, ease: 'power2.out' }, 1.1 + i * .3));
+    tl.fromTo('#lc', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: .3, ease: 'power3.out' }, 1.9);
+    tl.to(['#lw', '#lt', '#lc'], { opacity: 0, filter: 'blur(10px)', duration: .2, ease: 'power2.in' }, 4.4);
+
+    window.__timelines["libs"] = tl;
+  </script>
+</template>

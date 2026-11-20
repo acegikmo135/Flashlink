@@ -1,0 +1,10 @@
+# REVIEW — "11:42 pm" (HyperFrames, 1920×1080, 30 fps, 63 s)
+
+**Creative calls:** storyline A (a maker at 11:42 pm, object-to-object chain); the board is the hero of the bench shots (drawn: no real source exists); every product shot is the product — a *real capture* of the actual MCU Bridge web app (built `web/dist`, driven with real clicks/typing, backend mocked with fictional data) and a rebuild of *real* tool output (live `compile_firmware` call: 6,264 bytes, sha-256 6094da1f…) and the real ESP32 flash layout (0x1000/0x8000/0xe000/0x10000). Not built: storyline B (one long take) and C (type on colour fields).
+
+**Real vs rebuilt:** REAL capture — nameit, flash (dashboard rename, flashing → ready, Activity). REBUILT in DOM from real data — compile card, libraries list (names as in the tool description), flash map. DRAWN — bench, board, laptop, phone, chat UI (generic, not a named AI product). Not shown: the Windows desktop app (its CI screenshots render without fonts).
+
+**Measured:** `check` passes (1 kept warning: nested video `data-start` is composition-local, intended); `snapshot --review` sheets viewed for every scene and seam; rendered file: 1890 frames, 63 s, −14.2 LUFS, −3.2 dBFS peak (ffmpeg `loudnorm`, two-pass).
+**Not verified:** the sound was measured, never heard. Sound is mixed into one file (`assets/audio/mix.wav`, built by `gen/make_audio.py`): near silence for the failing old way, a minimal synthesised piano bed from 10.8 s, a soft click on each cursor click, key ticks on typing, whooshes on seams, one riser into one impact at the payoff. A synthesised bed is a placeholder for a licensed track.
+**Weakest shots:** the chat world (generic bubbles on white); the compile/libs cards are plain white rectangles on blue; the "Streamed to your PC" crop is small text on a large window.
+**Defaults caught and fixed:** the original bench had the board overlapping the laptop (re-composed); terminal line spacing doubled by `white-space: pre` (fixed); four lines under their read floor (shortened/held longer).

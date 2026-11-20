@@ -1,0 +1,63 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+#w{position:absolute;inset:0;background:#fff}
+#at{left:120px;top:100px;opacity:0}
+#panel{position:absolute;left:320px;top:290px;width:1280px;height:620px;border-radius:36px;background:#f2f2f7}
+#me{position:absolute;right:340px;top:340px;max-width:900px;background:#007aff;color:#fff;font-size:44px;font-weight:500;padding:26px 40px;border-radius:40px;letter-spacing:-.01em;opacity:0;white-space:nowrap}
+#ai{position:absolute;left:360px;top:540px;width:880px;height:290px;border-radius:40px;background:#fff;opacity:0}
+#ai p{position:absolute;left:44px;top:34px;font-size:40px;font-weight:500;letter-spacing:-.01em;white-space:nowrap}
+#chip{position:absolute;left:36px;top:130px;width:300px;height:58px;border-radius:16px;background:rgba(0,122,255,.14);color:#007aff;font-size:32px;font-weight:600;display:flex;align-items:center;justify-content:center}
+#bar{position:absolute;left:44px;top:228px;width:560px;height:12px;border-radius:6px;background:rgba(120,120,128,.2);overflow:hidden}
+#bar i{display:block;height:100%;width:100%;background:#007aff;transform-origin:0 50%;transform:scaleX(0)}
+#flood{position:absolute;left:396px;top:670px;width:300px;height:58px;border-radius:16px;background:#007aff;opacity:0}
+</style>
+  <div id="root" data-composition-id="ask" data-width="1920" data-height="1080">
+
+    <div id="w">
+      <div id="at" class="title">Then just ask.</div>
+      <div id="panel"></div>
+      <div id="me"><span id="mt"></span></div>
+      <div id="ai"><p>Compiling for your ESP32, then flashing it.</p><div id="chip">build_and_flash</div><div id="bar"><i></i></div></div>
+      <div id="flood"></div>
+    </div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    tl.fromTo('#w', { clipPath: 'circle(0px at 50% 100%)' }, { clipPath: 'circle(150% at 50% 100%)', duration: .5, ease: 'power3.inOut' }, 0);
+    const at = split($('#at'), 'char');
+    tl.set('#at', { opacity: 1 }, 0.4);
+    tl.fromTo(at, { opacity: .3, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: .15, stagger: .04, ease: 'power3.out' }, 0.5);
+    tl.fromTo('#panel', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: 'expo.out' }, 0.5);
+    tl.set('#me', { opacity: 1 }, 1.2);
+    typeTo($('#mt'), 'Flash blink to Desk ESP32', 1.2, 1.5);
+    tl.fromTo('#ai', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out' }, 3.0);
+    tl.fromTo('#chip', { scale: .8 }, { scale: 1, duration: .5, ease: 'back.out(1.4)' }, 3.4);
+    tl.fromTo('#bar i', { scaleX: 0 }, { scaleX: 1, duration: 1.6, ease: 'power1.inOut' }, 3.7);
+    // the chip becomes the next world: it grows past the frame (zoom through)
+    tl.set('#flood', { opacity: 1 }, 5.35);
+    tl.fromTo('#flood', { scale: 1 }, { scale: 42, duration: .65, ease: 'power3.in', transformOrigin: '50% 50%' }, 5.35);
+
+    window.__timelines["ask"] = tl;
+  </script>
+</template>

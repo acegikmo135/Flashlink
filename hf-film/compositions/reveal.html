@@ -1,0 +1,43 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+#w{position:absolute;inset:0;background:#007aff;clip-path:circle(0px at 50% 62%)}
+#wm{position:absolute;left:130px;top:300px;font-size:270px;color:#fff;white-space:nowrap;line-height:1;letter-spacing:-.04em}
+#sub{position:absolute;left:140px;top:640px;font-size:60px;font-weight:500;color:rgba(255,255,255,.92);opacity:0}
+</style>
+  <div id="root" data-composition-id="reveal" data-width="1920" data-height="1080">
+
+    <div id="w"><div id="wm">MCU Bridge</div><div id="sub">Let your AI flash it.</div></div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    tl.fromTo('#w', { clipPath: 'circle(0px at 50% 62%)' }, { clipPath: 'circle(150% at 50% 62%)', duration: .6, ease: 'power2.inOut' }, 0);
+    const ch = split($('#wm'), 'char');
+    tl.fromTo(ch, { opacity: .3, filter: 'blur(10px)' }, { opacity: 1, filter: 'blur(0px)', duration: .18, stagger: .1, ease: 'power3.out' }, 0.7);
+    tl.fromTo('#sub', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .25, ease: 'power4.out' }, 2.0);
+    // leave on a whip: the next world arrives from the right
+    tl.to('#w', { x: -260, opacity: 0, filter: 'blur(18px)', duration: .45, ease: 'power3.in' }, 3.85);
+
+    window.__timelines["reveal"] = tl;
+  </script>
+</template>

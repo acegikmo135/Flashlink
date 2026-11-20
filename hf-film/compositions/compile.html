@@ -1,0 +1,50 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+.row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(60,60,67,.16);font-size:36px;opacity:0}
+.row:last-child{border-bottom:none}
+.k{color:rgba(60,60,67,.6);font-weight:500}.v{font-weight:600;display:flex;align-items:center;gap:16px;font-variant-numeric:tabular-nums}
+
+#w{position:absolute;inset:0;background:#007aff}
+#ct{left:120px;top:100px;color:#fff;opacity:0}
+#cw{position:absolute;left:560px;top:330px;width:1160px;height:584px}
+.ck{stroke-dasharray:1;stroke-dashoffset:1}
+</style>
+  <div id="root" data-composition-id="compile" data-width="1920" data-height="1080">
+
+    <div id="w"><div id="ct" class="title">Compiled in the cloud.</div><div id="cw"><div id="card" class="shadow" style="position:absolute;left:0;top:0;width:1160px;height:584px;border-radius:28px;background:#fff;padding:28px 52px"><div class="row" style="height:88px"><span class="k">tool</span><span class="v">compile_firmware</span></div><div class="row" style="height:88px"><span class="k">board</span><span class="v">esp32-wroom-32</span></div><div class="row" style="height:88px"><span class="k">libraries</span><span class="v">Adafruit NeoPixel</span></div><div class="row" style="height:88px"><span class="k">size</span><span class="v">6,264 bytes</span></div><div class="row" style="height:88px"><span class="k">sha-256</span><span class="v">6094da1f97dd7519…</span></div><div class="row" style="height:88px"><span class="k">status</span><span class="v"><span style="color:#34c759">ok</span><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="12" r="12" fill="#34c759"/><path class="ck" d="M6.5 12.5l3.8 3.8 7.2-7.6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg></span></div></div></div></div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    const ct = split($('#ct'), 'word');
+    tl.set('#ct', { opacity: 1 }, 0.3);
+    tl.fromTo(ct, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .13, stagger: .09, ease: 'power4.out' }, 0.35);
+    tl.fromTo('#card', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: 'expo.out' }, 0.45);
+    $$('.row').forEach((r, i) => tl.fromTo(r, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .3, ease: 'power3.out' }, 0.9 + i * .38));
+    tl.to('.ck', { strokeDashoffset: 0, duration: .35, ease: 'power2.out' }, 3.2);
+    tl.to('#cw', { opacity: 0, filter: 'blur(10px)', duration: .2, ease: 'power2.in' }, 4.55);
+    tl.to('#ct', { opacity: 0, filter: 'blur(8px)', duration: .15 }, 4.6);
+
+    window.__timelines["compile"] = tl;
+  </script>
+</template>

@@ -1,0 +1,58 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+#w{position:absolute;inset:0;background:#dcd9d2;clip-path:circle(0px at 50% 50%)}
+#ft2{left:120px;top:100px;opacity:0}
+#strip{position:absolute;left:210px;top:330px;width:1500px;height:70px;border-radius:16px;background:rgba(120,120,128,.22);overflow:hidden}
+.seg{transform-origin:0 50%;transform:scaleX(0)}
+#ends{position:absolute;left:210px;top:410px;width:1500px;font-size:30px;font-weight:500;color:rgba(60,60,67,.7);display:flex;justify-content:space-between}
+#tbl{position:absolute;left:210px;top:490px;width:1500px;height:392px;border-radius:28px;background:#fff;padding:28px 56px}
+.prow{display:flex;align-items:center;border-bottom:1px solid rgba(60,60,67,.16);font-size:36px;opacity:0}
+.prow:last-child{border-bottom:none}
+.dot{width:20px;height:20px;border-radius:10px;margin-right:26px}
+.nm{flex:1;font-weight:600}.ad{width:260px;color:rgba(60,60,67,.6);font-weight:500;font-variant-numeric:tabular-nums}.sz{width:240px;text-align:right;color:rgba(60,60,67,.6);font-weight:500;font-variant-numeric:tabular-nums}
+</style>
+  <div id="root" data-composition-id="flashmap" data-width="1920" data-height="1080">
+
+    <div id="w">
+      <svg class="abs" style="left:0;top:0" width="1920" height="1080"><defs><pattern id="g" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#cfccc5" stroke-width="1"/></pattern></defs>
+<rect width="1920" height="1080" fill="#dcd9d2"/><rect width="1920" height="1080" fill="url(#g)"/></svg>
+      <div id="ft2" class="title">Even a blank ESP32 boots.</div>
+      <div id="strip"><div class="seg" data-i="0" style="position:absolute;left:4.5px;top:0;width:18.6px;height:70px;background:#af52de"></div><div class="seg" data-i="1" style="position:absolute;left:35.7px;top:0;width:6.0px;height:70px;background:#ff9500"></div><div class="seg" data-i="2" style="position:absolute;left:62.5px;top:0;width:8.9px;height:70px;background:#34c759"></div><div class="seg" data-i="3" style="position:absolute;left:71.4px;top:0;width:1314.3px;height:70px;background:#007aff"></div></div>
+      <div id="ends"><span>0x0</span><span>0x150000</span></div>
+      <div id="tbl" class="shadow"><div class="prow" style="height:84px"><span class="dot" style="background:#af52de"></span><span class="nm">bootloader.bin</span><span class="ad">0x1000</span><span class="sz">17,104 B</span></div><div class="prow" style="height:84px"><span class="dot" style="background:#ff9500"></span><span class="nm">partitions.bin</span><span class="ad">0x8000</span><span class="sz">3,072 B</span></div><div class="prow" style="height:84px"><span class="dot" style="background:#34c759"></span><span class="nm">boot_app0.bin</span><span class="ad">0xe000</span><span class="sz">8,192 B</span></div><div class="prow" style="height:84px"><span class="dot" style="background:#007aff"></span><span class="nm">firmware.bin</span><span class="ad">0x10000</span><span class="sz">your app</span></div></div>
+    </div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    tl.fromTo('#w', { clipPath: 'circle(0px at 50% 50%)' }, { clipPath: 'circle(150% at 50% 50%)', duration: .55, ease: 'power2.inOut' }, 0);
+    const t = split($('#ft2'), 'word');
+    tl.set('#ft2', { opacity: 1 }, 0.4);
+    tl.fromTo(t, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .13, stagger: .09, ease: 'power4.out' }, 0.45);
+    $$('.seg').forEach((s, i) => tl.fromTo(s, { scaleX: 0 }, { scaleX: 1, duration: .5, ease: 'power3.out' }, 1.0 + i * .45));
+    $$('.prow').forEach((r, i) => tl.fromTo(r, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .3, ease: 'power3.out' }, 1.15 + i * .45));
+    tl.to('#w', { opacity: 0, filter: 'blur(10px)', duration: .22, ease: 'power2.in' }, 5.3);
+
+    window.__timelines["flashmap"] = tl;
+  </script>
+</template>

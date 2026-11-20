@@ -1,0 +1,66 @@
+<template>
+  <style>
+@font-face{font-family:"Geist";src:url('assets/fonts/geist.woff2') format('woff2');font-weight:100 900}
+#root{position:absolute;inset:0;overflow:hidden;font-family:"Geist",sans-serif;color:#111;font-weight:600;letter-spacing:-.02em}
+.abs{position:absolute}
+.title{position:absolute;white-space:nowrap;line-height:1;font-size:108px;font-weight:600;letter-spacing:-.02em}
+.shadow{box-shadow:0 30px 80px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08)}
+
+#w{position:absolute;inset:0;background:#dcd9d2}
+#win{position:absolute;left:210px;top:330px;width:1500px;height:640px;border-radius:24px;overflow:hidden;background:#fff}
+#vcam{position:absolute;left:0;top:0;width:1440px;height:900px;transform-origin:0 0}
+#vcam video{position:absolute;left:0;top:0;width:1440px;height:900px}
+#s1t,#s2t{left:120px;top:100px;opacity:0}
+#ck{position:absolute;left:960px;top:540px;width:200px;height:200px;margin:-100px 0 0 -100px;border-radius:100px;background:#34c759;opacity:0;display:grid;place-items:center}
+</style>
+  <div id="root" data-composition-id="flash" data-width="1920" data-height="1080">
+
+    <div id="w">
+      <svg class="abs" style="left:0;top:0" width="1920" height="1080"><defs><pattern id="g" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#cfccc5" stroke-width="1"/></pattern></defs>
+<rect width="1920" height="1080" fill="#dcd9d2"/><rect width="1920" height="1080" fill="url(#g)"/></svg>
+      <div id="s1t" class="title">Streamed to your PC.</div>
+      <div id="s2t" class="title">Verified, never assumed.</div>
+      <div id="win" class="shadow"><div id="vcam"><video id="fvid" class="clip" src="assets/hero.mp4" data-start="0" data-duration="5.1" data-media-start="3.4" muted playsinline></video></div></div>
+      <svg class="cursor" viewBox="0 0 48 56" width="64" height="75" style="position:absolute;left:0;top:0;opacity:0;z-index:40;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))"><path d="M4 3 L4 42 L15 32.5 L22 49 L30.5 45.5 L23.5 29.5 L38 29.5 Z" fill="#111" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/></svg>
+      <div id="ck"><svg viewBox="0 0 24 24" width="120" height="120"><path d="M6.5 12.5l3.8 3.8 7.2-7.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const split = (el, by) => { const t = el.textContent; el.textContent = ''; const out = [];
+      if (by === 'word') { t.split(' ').forEach((w, i, a) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.textContent = w + (i < a.length - 1 ? '\u00a0' : ''); el.appendChild(s); out.push(s); }); }
+      else { [...t].forEach((c) => { const s = document.createElement('span'); s.style.display = 'inline-block'; s.innerHTML = c === ' ' ? '&nbsp;' : c; el.appendChild(s); out.push(s); }); }
+      return out; };
+    const typeTo = (el, str, at, dur) => { const o = { i: 0 }; tl.fromTo(o, { i: 0 }, { i: str.length, duration: dur, ease: 'none', onUpdate() { el.textContent = str.slice(0, Math.round(o.i)); } }, at); };
+    const cursorPath = (sel, pts) => { /* pts: [[t,x,y],...] — each leg eased, one tween per leg */
+      const c = $(sel); tl.set(c, { opacity: 1, x: pts[0][1], y: pts[0][2] }, pts[0][0]);
+      for (let i = 1; i < pts.length; i++) tl.to(c, { x: pts[i][1], y: pts[i][2], duration: pts[i][0] - pts[i - 1][0], ease: 'power2.inOut' }, pts[i - 1][0]); };
+    const click = (sel, at) => { tl.to(sel, { scale: .86, duration: .06, ease: 'power2.out', transformOrigin: '8% 6%' }, at); tl.to(sel, { scale: 1, duration: .14, ease: 'power2.out', transformOrigin: '8% 6%' }, at + .06); };
+
+    const W = 1500, H = 640, K1 = 1.9791666666666667, K0 = 1.0416666666666667;
+    tl.set('#vcam', { x: W / 2 - 640 * K1, y: H / 2 - 300 * K1, scale: K1 }, 0);
+    tl.fromTo('#w', { x: 300, opacity: 0, filter: 'blur(18px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'expo.out' }, 0);
+    const a = split($('#s1t'), 'word');
+    tl.set('#s1t', { opacity: 1 }, 0.35);
+    tl.fromTo(a, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .13, stagger: .1, ease: 'power4.out' }, 0.4);
+    // pull back to the whole window so the cursor can reach the sidebar
+    tl.to('#vcam', { x: 0, y: 0, scale: K0, duration: .55, ease: 'power2.inOut' }, 2.1);
+    tl.to('#s1t', { opacity: 0, filter: 'blur(8px)', duration: .15, ease: 'power2.in' }, 2.5);
+    // the cursor clicks "Activity" at media t=6.4 s (local 3.0 s): the capture navigates on that frame
+    cursorPath('.cursor', [[2.0, 1900, 1100], [2.95, 345, 545]]);
+    click('.cursor', 3.0);
+    tl.to('.cursor', { opacity: 0, duration: .2 }, 3.5);
+    tl.to('#vcam', { x: W / 2 - 860 * 2.078125, y: H / 2 - 262 * 2.078125, scale: 2.078125, duration: .6, ease: 'power2.inOut' }, 3.2);
+    tl.fromTo('#s2t', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .2, ease: 'power4.out' }, 3.4);
+    // the check grows through the frame (zoom through) into the bench
+    tl.set('#ck', { opacity: 1 }, 5.35);
+    tl.fromTo('#ck', { scale: .3 }, { scale: 14, duration: .8, ease: 'power3.in' }, 5.35);
+
+    window.__timelines["flash"] = tl;
+  </script>
+</template>

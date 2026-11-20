@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[{"id":"color-ground","type":"color","label":"Bench ground","default":"#dcd9d2"},{"id":"color-ink","type":"color","label":"Ink","default":"#111111"},{"id":"color-accent","type":"color","label":"Accent","default":"#007aff"},{"id":"font-display","type":"string","label":"Display font","default":"Geist"}]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root { --color-ground:#dcd9d2; --color-ink:#111111; --color-accent:#007aff; --font-display:Geist; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      html, body { width:1920px; height:1080px; overflow:hidden; background:var(--color-ground); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="63" data-width="1920" data-height="1080">
+      <div id="bench" class="clip" data-composition-id="bench" data-composition-src="compositions/bench.html" data-start="0" data-duration="5.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:1"></div>
+      <div id="fail" class="clip" data-composition-id="fail" data-composition-src="compositions/fail.html" data-start="4.6" data-duration="6.8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:2"></div>
+      <div id="reveal" class="clip" data-composition-id="reveal" data-composition-src="compositions/reveal.html" data-start="10.8" data-duration="4.4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:3"></div>
+      <div id="nameit" class="clip" data-composition-id="nameit" data-composition-src="compositions/nameit.html" data-start="14.6" data-duration="5.0" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:4"></div>
+      <div id="ask" class="clip" data-composition-id="ask" data-composition-src="compositions/ask.html" data-start="19.0" data-duration="6.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:5"></div>
+      <div id="compile" class="clip" data-composition-id="compile" data-composition-src="compositions/compile.html" data-start="25.0" data-duration="5.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:6"></div>
+      <div id="libs" class="clip" data-composition-id="libs" data-composition-src="compositions/libs.html" data-start="30.0" data-duration="4.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:7"></div>
+      <div id="flashmap" class="clip" data-composition-id="flashmap" data-composition-src="compositions/flashmap.html" data-start="34.0" data-duration="5.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:8"></div>
+      <div id="flash" class="clip" data-composition-id="flash" data-composition-src="compositions/flash.html" data-start="39.0" data-duration="6.4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:9"></div>
+      <div id="payoff" class="clip" data-composition-id="payoff" data-composition-src="compositions/payoff.html" data-start="44.6" data-duration="7.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:10"></div>
+      <div id="claim" class="clip" data-composition-id="claim" data-composition-src="compositions/claim.html" data-start="51.8" data-duration="3.6" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:11"></div>
+      <div id="endcard" class="clip" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="55.0" data-duration="8.0" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080" style="z-index:12"></div>
+      <audio id="mix" class="clip" src="assets/audio/mix.wav" data-start="0" data-duration="63" data-track-index="2" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>
