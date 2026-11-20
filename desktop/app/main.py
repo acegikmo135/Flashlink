@@ -78,6 +78,14 @@ def selftest() -> int:
     import tempfile
 
     t0 = time.perf_counter()
+    stage_log = (os.environ.get("MCUB_SELFTEST_OUT") or "") + ".stages"
+
+    def stage(msg: str) -> None:  # breadcrumbs so CI can show where a hang happened
+        if stage_log != ".stages":
+            with open(stage_log, "a", encoding="utf-8") as f:
+                f.write(f"{round((time.perf_counter() - t0) * 1000):>6} ms  {msg}\n")
+
+    stage("start")
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     home = tempfile.mkdtemp(prefix="mcub-selftest-")
     os.environ["MCUBRIDGE_HOME"] = home
@@ -85,17 +93,24 @@ def selftest() -> int:
     os.environ.setdefault("MCUBRIDGE_SERVER", "http://127.0.0.1:9")
     from PySide6.QtWidgets import QApplication
 
+    stage("pyside imported")
     from app.ui import theme
     from app.ui.app import MainWindow
 
+    stage("app.ui imported")
     store, hw, agent = build_core()
+    stage("core built")
     t_import = time.perf_counter()
     app = QApplication([])
+    stage("QApplication created")
     theme.apply("dark", app)
     agent.hw.scan()
+    stage("devices scanned")
     win = MainWindow(agent, hw)
+    stage("window built")
     win.show()
     app.processEvents()
+    stage("window shown")
     t_window = time.perf_counter()
     agent.state.connection = "connected"
     agent.state.devices = [{**d.to_wire(), "label": d.label} for d in hw.scan()]
@@ -105,6 +120,7 @@ def selftest() -> int:
         win.go(i)
         app.processEvents()
         pages.append((name, round((time.perf_counter() - ts) * 1000)))
+        stage(f"page {name} ok")
     shots = os.environ.get("MCUB_SELFTEST_SHOTS")
     if shots:
         os.makedirs(shots, exist_ok=True)

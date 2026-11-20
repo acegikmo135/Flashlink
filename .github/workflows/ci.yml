@@ -26,6 +26,7 @@ jobs:
       - run: QT_QPA_PLATFORM=offscreen python -m pytest tests -q   # end-to-end: local Worker + agent core + simulated boards
   windows-build:
     runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -49,25 +50,44 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
           $i = Get-Item desktop\dist\MCUBridge-Setup.exe
           "Installer: {0:N1} MB" -f ($i.Length/1MB)
-      - name: Silent install, self-test, uninstall
+      - name: Silent install
+        timeout-minutes: 6
         shell: pwsh
         run: |
           $dir = "$env:RUNNER_TEMP\mcub-install"
-          $p = Start-Process desktop\dist\MCUBridge-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$dir","/TASKS=" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+          $p = Start-Process desktop\dist\MCUBridge-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$dir","/LOG=$env:RUNNER_TEMP\setup.log","/TASKS=" -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 40; throw "installer hung" }
+          "installer exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 40; throw "installer failed" }
           if (-not (Test-Path "$dir\MCUBridge.exe")) { throw "MCUBridge.exe not installed" }
           "Installed size: {0:N1} MB" -f ((Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum/1MB)
+      - name: Self-test the installed app (offscreen UI, all pages)
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $dir = "$env:RUNNER_TEMP\mcub-install"
           $env:MCUB_SELFTEST_OUT = "$env:RUNNER_TEMP\selftest.json"
           $env:MCUB_SELFTEST_SHOTS = "$env:RUNNER_TEMP\shots"
-          $t = Measure-Command { $r = Start-Process "$dir\MCUBridge.exe" -ArgumentList "--selftest" -Wait -PassThru }
-          "selftest exit=$($r.ExitCode) wall=$([int]$t.TotalMilliseconds) ms"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $r = Start-Process "$dir\MCUBridge.exe" -ArgumentList "--selftest" -PassThru
+          $done = $r.WaitForExit(90000)
+          "wall clock: $([int]$sw.ElapsedMilliseconds) ms"
+          if (Test-Path "$env:MCUB_SELFTEST_OUT.stages") { "--- stages ---"; Get-Content "$env:MCUB_SELFTEST_OUT.stages" }
+          if (-not $done) { $r.Kill(); throw "selftest hung (see stages above)" }
+          "exit code: $($r.ExitCode)"
           if ($r.ExitCode -ne 0 -or -not (Test-Path $env:MCUB_SELFTEST_OUT)) { throw "selftest failed" }
           Get-Content $env:MCUB_SELFTEST_OUT
           $j = Get-Content $env:MCUB_SELFTEST_OUT | ConvertFrom-Json
           if (-not $j.ok) { throw "selftest reported failure" }
-          Copy-Item "$env:RUNNER_TEMP\shots" desktop\dist\shots -Recurse
+          Copy-Item "$env:RUNNER_TEMP\shots" desktop\dist\shots -Recurse -ErrorAction SilentlyContinue
+      - name: Uninstall
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $dir = "$env:RUNNER_TEMP\mcub-install"
           $u = Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1
-          Start-Process $u.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          $p = Start-Process $u.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "uninstaller hung" }
           Start-Sleep 3
           if (Test-Path "$dir\MCUBridge.exe") { throw "uninstall left files behind" }
           "uninstalled cleanly"
