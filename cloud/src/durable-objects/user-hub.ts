@@ -516,7 +516,9 @@ export class UserHub extends DurableObject<Env> {
       return { ok: true, job: this.jobs.get(jobId)!, note: "Cancelled before any flashing started; device untouched." };
     }
     // Agent confirms with job.result(cancelled); give it a moment.
-    const j2 = await this.getJob(jobId, 8000);
+    const until = Date.now() + 8000;
+    while (!isTerminal(this.jobs.get(jobId)?.status ?? "cancelled") && Date.now() < until) await this.jobSignal.wait(500);
+    const j2 = this.jobs.get(jobId) ?? null;
     const note = j2 && isTerminal(j2.status) ? "Cancelled." : "Cancel requested; the agent is stopping the current step. Poll get_flash_job. A cancelled flash may leave the device in a partially written state.";
     return { ok: true, job: j2 ?? job, note };
   }
