@@ -13,6 +13,7 @@ import { ESP32_BOOT } from "../compile/esp32-boot";
 import { findBuild, markFlashed, parseJson, recordBuild, type BuildRow } from "../compile/builds";
 import { sha256Hex } from "../lib/crypto";
 import { iso, publicAgent, publicDevice } from "../devices/public";
+import { DEVICE_NAME, loadNames, resolveDeviceRef, setDeviceName } from "../devices/names";
 
 export interface McpContext {
   env: Env;
@@ -81,7 +82,7 @@ function curlFor(u: { url: string; filename: string }, token: string) {
   return `curl -sS --fail-with-body --max-time 900 -X PUT -H "Authorization: Bearer ${token}" -H "Content-Type: application/octet-stream" -T "<path-to>/${u.filename}" "${u.url}"`;
 }
 
-const DeviceIdParam = z.string().regex(/^[A-Za-z0-9_-]{4,64}$/).optional().describe("Device id from list_devices. Optional only when exactly one device is connected.");
+const DeviceIdParam = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,63}$/).optional().describe("Device id OR the name the user gave the board (both shown by list_devices). Optional only when exactly one device is connected.");
 const Baud = z.number().int().min(1200).max(3_000_000).optional().describe("Serial baud rate. Defaults to the desktop app's detected/standard rate (115200).");
 
 // --------------------------------------------------------------------- server
@@ -89,13 +90,14 @@ const Baud = z.number().int().min(1200).max(3_000_000).optional().describe("Seri
 export function buildServer(ctx: McpContext): McpServer {
   const { env, userId } = ctx;
   const hub = () => hubOf(env, userId);
+  const rid = (x?: string) => resolveDeviceRef(env, userId, x);
 
   const server = new McpServer(
     { name: "mcu-bridge", version: "0.1.0" },
     {
       instructions:
         "MCU Bridge flashes physical microcontrollers attached to the user's Windows PC. The PC never compiles; it only flashes. The desktop app picks the right programmer for each board automatically — you never choose or run flashing tools yourself, and must not describe one tool's errors for a different family.\n" +
-        "BOARD → FLASH TOOL (used by the desktop app): Arduino Uno/Nano/Mega and other AVR → avrdude (never esptool). ESP32/ESP32-S2/S3/C3/ESP8266 → esptool. STM32 → STM32CubeProgrammer/OpenOCD (ST-Link). CH32V003 → wlink (WCH-LinkE). Read `family`, `chip` and `missing` from list_devices/get_device_info; a missing tool is reported per device with its name, and the user can install it from the Tools page of the desktop app.\n" +
+        "BOARD → FLASH TOOL (used by the desktop app): Arduino Uno/Nano/Mega and other AVR → avrdude (never esptool). ESP32/ESP32-S2/S3/C3/ESP8266 → esptool. STM32 → STM32CubeProgrammer/OpenOCD (ST-Link). CH32V003 → wlink (WCH-LinkE). Read `family`, `chip` and `missing` from list_devices/get_device_info. Users can name their boards (`name` in list_devices; rename_device sets it): always refer to a board by that name, and accept it anywhere device_id is expected; a missing tool is reported per device with its name, and the user can install it from the Tools page of the desktop app.\n" +
         "NO CODE SANDBOX? Use build_and_flash: send the Arduino sketch source and board id; the cloud compiles it (third-party libraries via `libraries`) and streams it to the PC in one call. ESP32 builds are flashed as a complete image (bootloader + partitions + app), so even a blank chip boots. compile_firmware only compiles. Every build is recorded in a metadata-only history: list_builds shows it and flash_build re-flashes an earlier build_id; delete_build removes one.\n" +
         "Workflow with your own toolchain: list_devices → (identify_mcu) → build firmware → flash_firmware (with a manifest) → upload files with the returned curl commands → get_flash_job(wait_seconds) until is_terminal → capture_boot_log/read_serial. " +
         "Only treat firmware as flashed when get_flash_job reports status 'completed' with flash_confirmed=true. Every failure carries a specific error.code.",
@@ -140,10 +142,11 @@ export function buildServer(ctx: McpContext): McpServer {
           no_agent: "The MCU Bridge desktop app is not connected. Ask the user to start it on their PC.",
           no_device: "Desktop app is online but no MCU is plugged in. Ask the user to connect a board, then call detect_new_devices with wait_seconds.",
           single_device: "One device available; device_id may be omitted in other tools.",
-          multiple_devices: "Several devices are connected. Pass device_id explicitly.",
+          multiple_devices: "Several devices are connected. Pass device_id explicitly — either the id or the name the user gave the board (shown as `name`).",
         }[situation];
+        const names = await loadNames(env, userId);
         const shown = snap.devices.filter((d) => (include_disconnected || isReachable(d, agents)) && (d.supported || include_disconnected));
-        return ok({ situation, registry_version: snap.version, agents: snap.agents.map(publicAgent), devices: shown.map((d) => publicDevice(d, agents, jobs)), hint });
+        return ok({ situation, registry_version: snap.version, agents: snap.agents.map(publicAgent), devices: shown.map((d) => publicDevice(d, agents, jobs, names)), hint });
       }),
   );
 
@@ -160,12 +163,12 @@ export function buildServer(ctx: McpContext): McpServer {
       guard(async () => {
         const snap = await hub().snapshot();
         const agents = Object.fromEntries(snap.agents.map((a) => [a.id, a]));
-        const sel = selectDevice(snap.devices, agents, device_id);
+        const sel = selectDevice(snap.devices, agents, await rid(device_id));
         if (!sel.ok) return fromFailure(sel);
         const d = sel.device;
         const fam = d.family ? FAMILIES[d.family] : undefined;
         return ok({
-          device: publicDevice(d, agents, await hub().listJobs()),
+          device: publicDevice(d, agents, await hub().listJobs(), await loadNames(env, userId)),
           agent: publicAgent(agents[d.agent_id]),
           manifest_requirements: fam ? { family: d.family, flash_tool: fam.tool, formats: fam.formats, baud_rates: fam.baud_rates, flash_modes: fam.flash_modes ?? null, flash_frequencies: fam.flash_freqs ?? null, flash_sizes: fam.flash_sizes ?? null, limits: LIMITS } : null,
         });
@@ -185,7 +188,7 @@ export function buildServer(ctx: McpContext): McpServer {
     ({ device_id }) =>
       guard(async () => {
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), await rid(device_id));
         if (!sel.ok) return fromFailure(sel);
         const r = await hub().command(sel.device.id, "identify", {}, 60_000);
         if (!r.ok) return fromFailure(r);
@@ -215,7 +218,7 @@ export function buildServer(ctx: McpContext): McpServer {
         }
         if (!dev) return err("DEVICE_NOT_FOUND", `No device with id '${device_id}'.`, { hint: "Call list_devices." });
         const jobs = await hub().listJobs();
-        const pd = publicDevice(dev, agents, jobs);
+        const pd = publicDevice(dev, agents, jobs, await loadNames(env, userId));
         const mine = jobs.filter((j) => j.device_id === dev!.id);
         return ok({ state: pd.state, device: pd, active_job: mine.find((j) => !isTerminal(j.status)) ? publicJob(mine.find((j) => !isTerminal(j.status))!) : null, last_job: mine.find((j) => isTerminal(j.status)) ? publicJob(mine.find((j) => isTerminal(j.status))!) : null });
       }),
@@ -238,7 +241,8 @@ export function buildServer(ctx: McpContext): McpServer {
         const ch = await hub().changesSince(since, (wait_seconds ?? 0) * 1000);
         const agents = Object.fromEntries(snap.agents.map((a) => [a.id, a]));
         const jobs = await hub().listJobs();
-        return ok({ registry_version: ch.version, changed: ch.added.length + ch.removed.length > 0, added: ch.added.map((d) => publicDevice(d, agents, jobs)), removed: ch.removed.map((d) => publicDevice(d, agents, jobs)) });
+        const nm = await loadNames(env, userId);
+        return ok({ registry_version: ch.version, changed: ch.added.length + ch.removed.length > 0, added: ch.added.map((d) => publicDevice(d, agents, jobs, nm)), removed: ch.removed.map((d) => publicDevice(d, agents, jobs, nm)) });
       }),
   );
 
@@ -258,7 +262,7 @@ export function buildServer(ctx: McpContext): McpServer {
       user_id: userId,
       manifest: v.manifest,
       kind,
-      device_id: a.device_id,
+      device_id: await rid(a.device_id),
       verify: kind === "verify" ? true : a.verify ?? true,
       boot_log_seconds: kind === "verify" ? 0 : a.boot_log_seconds ?? 4,
       base_url: ctx.origin,
@@ -352,7 +356,7 @@ export function buildServer(ctx: McpContext): McpServer {
     ({ device_id, capture_seconds, baud_rate }) =>
       guard(async () => {
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), await rid(device_id));
         if (!sel.ok) return fromFailure(sel);
         const r = await hub().command(sel.device.id, "reset", { capture_seconds: capture_seconds ?? 0, baud_rate }, ((capture_seconds ?? 0) + 20) * 1000);
         if (!r.ok) return fromFailure(r);
@@ -374,7 +378,7 @@ export function buildServer(ctx: McpContext): McpServer {
     ({ device_id, duration_ms, baud_rate, max_bytes }) =>
       guard(async () => {
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), await rid(device_id));
         if (!sel.ok) return fromFailure(sel);
         const dur = duration_ms ?? 2000;
         const r = await hub().command(sel.device.id, "read_serial", { duration_ms: dur, baud_rate, max_bytes: max_bytes ?? 16384 }, dur + 15_000);
@@ -395,7 +399,7 @@ export function buildServer(ctx: McpContext): McpServer {
     ({ device_id, duration_ms, baud_rate }) =>
       guard(async () => {
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((a) => [a.id, a])), await rid(device_id));
         if (!sel.ok) return fromFailure(sel);
         const dur = duration_ms ?? 5000;
         const r = await hub().command(sel.device.id, "capture_boot_log", { duration_ms: dur, baud_rate }, dur + 20_000);
@@ -532,7 +536,7 @@ export function buildServer(ctx: McpContext): McpServer {
       guard(async () => {
         // 1) choose/validate the device first so we never compile for nothing
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((x) => [x.id, x])), a.device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((x) => [x.id, x])), await rid(a.device_id));
         if (!sel.ok) return fromFailure(sel);
         // 2) pick the board: explicit, else what the desktop auto-detected for this device
         const detected = sel.device.board && sel.device.board in COMPILE_BOARDS ? sel.device.board : sel.device.family?.startsWith("esp32") && !sel.device.family.match(/s2|s3|c3/) ? "esp32-generic" : null;
@@ -606,7 +610,7 @@ export function buildServer(ctx: McpContext): McpServer {
         const b = await findBuild(env.DB, userId, a.build_id);
         if (!b) return err("BUILD_NOT_FOUND", `No build ${a.build_id} in your history (history keeps the latest 40).`, { hint: "Call list_builds." });
         const snap = await hub().snapshot();
-        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((x) => [x.id, x])), a.device_id);
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((x) => [x.id, x])), await rid(a.device_id));
         if (!sel.ok) return fromFailure(sel);
         const input = { board: b.board, sketch: b.sketch, extra_files: parseJson<SourceFile[]>(b.files, []), libraries: parseJson<string[]>(b.libraries, []) };
         const r = await compileTo(input);
@@ -634,6 +638,25 @@ export function buildServer(ctx: McpContext): McpServer {
       guard(async () => {
         const r = await env.DB.prepare("DELETE FROM builds WHERE user_id = ?1 AND id = ?2").bind(userId, build_id).run();
         return ok({ deleted: (r.meta.changes ?? 0) > 0 });
+      }),
+  );
+
+  server.registerTool(
+    "rename_device",
+    {
+      title: "Give a board a custom name",
+      description: "Set (or clear, with name=null) a human name for a board, e.g. \"Kitchen ESP32\" or \"Robot Uno\", so you and the user never confuse boards. Afterwards every tool accepts the name wherever device_id is expected. Names: 1–32 chars (letters, digits, space, _ . -), unique per account, case-insensitive. Only rename when the user asks.",
+      inputSchema: strict({ device_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,63}$/), name: z.string().regex(DEVICE_NAME).nullable() }),
+      outputSchema: { ok: z.boolean(), device_id: z.string(), name: z.string().nullable() },
+      annotations: { title: "Give a board a custom name", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    ({ device_id, name }) =>
+      guard(async () => {
+        const snap = await hub().snapshot();
+        const id = (await rid(device_id)) as string;
+        if (!snap.devices.some((d) => d.id === id)) return err("DEVICE_NOT_FOUND", `No device '${device_id}' is known for this account.`, { hint: "Call list_devices." });
+        const r = await setDeviceName(env, userId, id, name);
+        return r.ok ? ok({ device_id: id, name: r.name }) : err(r.code, r.message);
       }),
   );
 

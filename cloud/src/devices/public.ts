@@ -4,12 +4,13 @@ export const iso = (t?: number | null) => (t ? new Date(t).toISOString() : null)
 
 // --------------------------------------------------------------------- shapes
 
-export function publicDevice(d: DeviceRecord, agents: Record<string, AgentRecord>, jobs: Job[]) {
+export function publicDevice(d: DeviceRecord, agents: Record<string, AgentRecord>, jobs: Job[], names?: Map<string, string>) {
   const active = jobs.find((j) => j.device_id === d.id && !isTerminal(j.status));
   const agent = agents[d.agent_id];
   const state = !agent?.connected ? "agent_offline" : !d.connected ? "disconnected" : active ? (active.kind === "flash" ? "flashing" : "verifying") : "idle";
   return {
     device_id: d.id,
+    name: names?.get(d.id) ?? null,
     state,
     port: d.port,
     family: d.family,

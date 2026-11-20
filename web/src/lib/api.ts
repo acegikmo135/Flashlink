@@ -25,6 +25,7 @@ export async function api<T = any>(path: string, init?: { method?: string; body?
 
 export interface Device {
   device_id: string
+  name: string | null
   state: string
   port: string | null
   family: string | null

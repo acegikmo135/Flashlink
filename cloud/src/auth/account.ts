@@ -1,6 +1,7 @@
 /** Account operations shared by the web dashboard API and the desktop app's account API. */
 import type { Env } from "../env";
 import { publicAgent, publicDevice } from "../devices/public";
+import { loadNames } from "../devices/names";
 import { randomId, randomToken, sha256Hex } from "../lib/crypto";
 import { hubOf } from "../lib/hub";
 
@@ -26,7 +27,8 @@ export async function loadOverview(env: Env, userId: string, email: string): Pro
     env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS ok FROM jobs WHERE user_id = ?1").bind(userId).first<{ total: number; ok: number | null }>(),
   ]);
   const agentsById = Object.fromEntries(snap.agents.map((a) => [a.id, a]));
-  const devices = snap.devices.filter((d) => d.supported && d.connected && agentsById[d.agent_id]?.connected).map((d) => publicDevice(d, agentsById, jobsLive));
+  const names = await loadNames(env, userId);
+  const devices = snap.devices.filter((d) => d.supported && d.connected && agentsById[d.agent_id]?.connected).map((d) => publicDevice(d, agentsById, jobsLive, names));
   const agents = agentRows.results.map((a) => {
     const live = agentsById[a.id];
     return { ...a, online: !!live?.connected, version: live?.version ?? null, os: live?.os ?? null, devices: devices.filter((d) => snap.devices.find((x) => x.id === d.device_id)?.agent_id === a.id).length, toolchains: live ? publicAgent(live).toolchains : {} };

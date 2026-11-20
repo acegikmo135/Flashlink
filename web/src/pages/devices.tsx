@@ -1,16 +1,49 @@
-import { Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/shell"
 import { Dot, DeviceStateBadge } from "@/components/status"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { api } from "@/lib/api"
 import { ago } from "@/lib/format"
 import { useOverview } from "@/lib/session"
+
+function DeviceName({ id, name, fallback, onSaved }: { id: string; name: string | null; fallback: string; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(name ?? "")
+  const save = async () => {
+    try {
+      await api(`/api/web/devices/${id}/name`, { method: "PUT", body: { name: val.trim() === "" ? null : val.trim() } })
+      toast.success(val.trim() ? `Named “${val.trim()}”` : "Name removed")
+      setEditing(false)
+      onSaved()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the name")
+    }
+  }
+  if (editing)
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); void save() }} className="flex items-center gap-2">
+        <Input autoFocus value={val} maxLength={32} placeholder="e.g. Kitchen ESP32" onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setEditing(false)} className="h-8 w-48" />
+        <Button type="submit" size="sm">Save</Button>
+      </form>
+    )
+  return (
+    <button type="button" onClick={() => { setVal(name ?? ""); setEditing(true) }} className="group flex items-center gap-2 text-left" title="Rename — AIs will use this name">
+      <span className="flex flex-col">
+        <span className="font-medium">{name ?? fallback}</span>
+        {name && <span className="text-xs font-normal text-muted-foreground">{fallback}</span>}
+      </span>
+      <Pencil className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  )
+}
 
 export function DevicesPage() {
   const { data, refresh } = useOverview()
@@ -21,7 +54,7 @@ export function DevicesPage() {
       <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
         <CardHeader>
           <CardTitle>Connected boards</CardTitle>
-          <CardDescription>Only supported microcontrollers are listed. Remote flashing is controlled per device in the desktop app.</CardDescription>
+          <CardDescription>Click a board’s name to give it your own (e.g. “Kitchen ESP32”) — the AI uses it so boards never get mixed up. Only supported microcontrollers are listed. Remote flashing is controlled per device in the desktop app.</CardDescription>
         </CardHeader>
         <CardContent>
           {data.devices.length === 0 ? (
@@ -40,7 +73,7 @@ export function DevicesPage() {
               <TableBody>
                 {data.devices.map((d) => (
                   <TableRow key={d.device_id}>
-                    <TableCell className="font-medium">{d.chip ?? d.board ?? "Unidentified board"}</TableCell>
+                    <TableCell><DeviceName id={d.device_id} name={d.name} fallback={d.chip ?? d.board ?? "Unidentified board"} onSaved={refresh} /></TableCell>
                     <TableCell className="font-mono text-xs">{d.port ?? "—"}</TableCell>
                     <TableCell>{d.family ?? "—"}</TableCell>
                     <TableCell><DeviceStateBadge state={d.state} /></TableCell>

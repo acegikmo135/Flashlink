@@ -77,8 +77,8 @@ class Mcp:
         s, b, _ = http("POST", BASE + "/mcp", json.dumps({"jsonrpc": "2.0", "id": self.n, "method": method, "params": params or {}}).encode(), self.h, timeout=90)
         return s, json.loads(b)
 
-    def call(self, name, **args):
-        s, d = self.rpc("tools/call", {"name": name, "arguments": args})
+    def call(self, tool, /, **args):
+        s, d = self.rpc("tools/call", {"name": tool, "arguments": args})
         assert s == 200, (s, d)
         if "error" in d:
             return {"ok": False, "protocol_error": d["error"]}

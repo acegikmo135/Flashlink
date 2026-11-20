@@ -1,3 +1,5 @@
+import { setDeviceName } from "../devices/names";
+import { hubOf } from "../lib/hub";
 /** Cookie sessions + the JSON API consumed by the web app (served from /api/web/*). */
 import type { Env } from "../env";
 import { hashPassword, randomId, randomToken, sha256Hex, timingSafeEqual, verifyPassword } from "../lib/crypto";
@@ -128,6 +130,16 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
   }
 
   if (path === "/api/web/overview" && method === "GET") return json({ ok: true, ...(await loadOverview(env, user.id, user.email)) });
+
+  const dn = /^\/api\/web\/devices\/([A-Za-z0-9_-]{4,64})\/name$/.exec(path);
+  if (dn && method === "PUT") {
+    const b = await body<{ name?: string | null }>(request);
+    if (!b || !("name" in b)) return errorJson(400, "BAD_REQUEST", "JSON body {name} required.");
+    const snap = await hubOf(env, user.id).snapshot();
+    if (!snap.devices.some((d) => d.id === dn[1])) return errorJson(404, "DEVICE_NOT_FOUND", "Unknown device.");
+    const r = await setDeviceName(env, user.id, dn[1], b.name == null ? null : String(b.name));
+    return r.ok ? json({ ok: true, name: r.name }) : errorJson(r.code === "NAME_TAKEN" ? 409 : 400, r.code, r.message);
+  }
 
   if (path === "/api/web/tokens" && method === "POST") {
     const b = await body(request);
