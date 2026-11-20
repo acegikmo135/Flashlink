@@ -131,6 +131,59 @@ def wait_job(mcp, job_id, timeout=60):
     raise AssertionError("job did not finish")
 
 
+class MockCompiler:
+    """Stand-in for the cloud build service (Wokwi hexi-compatible JSON API). Records every request."""
+
+    def __init__(self):
+        import base64
+        import http.server
+        import socketserver
+
+        outer = self
+        self.requests = []
+
+        def rec(addr, t, data):
+            raw = bytes([len(data), addr >> 8, addr & 255, t]) + data
+            return ":" + (raw + bytes([(-sum(raw)) & 255])).hex().upper()
+
+        self.avr_hex = "\r\n".join([rec(0, 0, bytes(range(16))), rec(16, 0, bytes(range(16, 32))), rec(0, 1, b"")]) + "\r\n"
+        # header of a real Arduino-ESP32 build: magic, 6 segments, DIO, 4MB@80m, entry point, ... chip id 0 (ESP32)
+        self.esp_bin = bytes([0xE9, 0x06, 0x02, 0x2F, 0xE4, 0x24, 0x08, 0x40, 0xEE, 0, 0, 0, 0, 0, 0, 0]) + bytes(range(256)) * 12
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+                outer.requests.append(body)
+                src = body.get("sketch", "")
+                if "FORCE_500" in src:
+                    self.send_response(500)
+                    self.end_headers()
+                    return
+                if "undefined_fn" in src:
+                    out = {"stdout": "\n", "stderr": "/sketch/sketch.ino:1:15: error: 'undefined_fn' was not declared in this scope\nError during build: exit status 1\n", "hex": "", "eep": ""}
+                elif body["board"] == "esp32":
+                    out = {"stdout": "Sketch uses 3072 bytes (0%) of program storage space. Maximum is 1310720 bytes.\n", "stderr": "", "hex": base64.b64encode(outer.esp_bin).decode(), "eep": ""}
+                else:
+                    out = {"stdout": "Sketch uses 924 bytes (2%) of program storage space. Maximum is 32256 bytes.\nGlobal variables use 9 bytes (0%) of dynamic memory.\n", "stderr": "", "hex": outer.avr_hex, "eep": ":00000001FF\r\n"}
+                data = json.dumps(out).encode()
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.send_header("content-length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *a):
+                pass
+
+        self.srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), H)
+        self.srv.daemon_threads = True
+        self.port = self.srv.server_address[1]
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def close(self):
+        self.srv.shutdown()
+
+
 class Stack:
     pass
 
@@ -142,8 +195,9 @@ def stack():
     cloud = ROOT / "cloud"
     env = {**os.environ, "NO_COLOR": "1"}
     subprocess.run(["npx", "wrangler", "d1", "migrations", "apply", "mcu-bridge", "--local", "--persist-to", str(persist)], cwd=cloud, check=True, capture_output=True, env=env)
+    compiler = MockCompiler()
     dev_vars = work / "e2e.vars"
-    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\n")
+    dev_vars.write_text(f"JOB_SIGNING_KEY=e2e-signing-key-{secrets.token_hex(8)}\nSIGNUP_CODE={SIGNUP}\nPAIR_START_LIMIT=1000\nCOMPILER_URL=http://127.0.0.1:{compiler.port}/build\n")
     # fake installer (3 parts) served by the Worker's /download route
     dl = ROOT / "web" / "dist" / "dl"
     shutil.rmtree(dl, ignore_errors=True)
@@ -172,6 +226,7 @@ def stack():
     s = Stack()
     s.work, s.proc = work, proc
     s.installer = blob
+    s.compiler = compiler
     s.web = Web()
     st, _ = s.web.post("/api/web/signup", email="e2e@example.com", password="correct-horse-battery", invite=SIGNUP)
     assert st == 200, st
@@ -192,6 +247,7 @@ def stack():
         except subprocess.TimeoutExpired:
             continue
     logf.close()
+    compiler.close()
     shutil.rmtree(dl, ignore_errors=True)  # never leave test files in the deployable dist
     shutil.rmtree(work, ignore_errors=True)
 

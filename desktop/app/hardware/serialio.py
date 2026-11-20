@@ -37,6 +37,10 @@ def pulse_reset(s: serial.Serial, style: str) -> None:
         s.dtr = True
         time.sleep(0.1)
         s.dtr = False
+    elif style == "auto":  # chip not identified yet: pulse DTR (AVR reset) then RTS (ESP EN)
+        pulse_reset(s, "avr")
+        time.sleep(0.05)
+        pulse_reset(s, "esp")
     else:
         s.dtr = False  # GPIO0 high => run mode
         s.rts = True   # EN low

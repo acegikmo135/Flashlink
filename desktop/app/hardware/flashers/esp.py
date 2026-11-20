@@ -71,7 +71,7 @@ class EspFlasher(Flasher):
         return argv
 
     def identify(self, dev: DeviceRef, cancel: threading.Event | None = None) -> dict:
-        r = run_tool(self._argv(dev, 115200, None, "hard-reset") + ["flash-id"], cancel=cancel, timeout=45)
+        r = run_tool(self._argv(dev, 115200, None, "hard-reset") + ["--connect-attempts", "2", "flash-id"], cancel=cancel, timeout=25)
         info = parse_probe(r.lines)
         if not info.get("chip"):
             code, msg = classify_failure(r.lines, "PROBE_FAILED")

@@ -32,7 +32,8 @@ Full steps: [docs/setup.md](docs/setup.md). Design: [docs/architecture.md](docs/
 
 `list_devices` `get_device_info` `identify_mcu` `get_device_status` `detect_new_devices` ·
 `flash_firmware` `get_flash_job` `cancel_flash_job` `verify_flash` `reset_device` ·
-`read_serial` `capture_boot_log` `get_flash_history` `get_supported_boards`
+`read_serial` `capture_boot_log` `get_flash_history` `get_supported_boards` ·
+**`compile_firmware` `build_and_flash`** — cloud compilation for plain chats with no code sandbox (Uno/Nano/Mega/ESP32; built-in Arduino libraries only)
 
 Claude can tell apart: no desktop app (`NO_AGENT_CONNECTED`), no device (`NO_DEVICE`), several devices (`MULTIPLE_DEVICES`),
 unsupported MCU, wrong firmware target (`TARGET_MISMATCH`), device unplugged, flashing in progress, completed, failed and

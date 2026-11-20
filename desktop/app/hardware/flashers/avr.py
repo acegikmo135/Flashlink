@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import threading
+from pathlib import Path
 
 from app.core.boards import BOARDS
 from app.hardware import serialio, tools
@@ -14,15 +15,28 @@ _SIGNATURES = {"1e950f": ("ATmega328P", "m328p"), "1e9514": ("ATmega328PB", "m32
 _PCT = re.compile(r"(\d+)%")
 
 
+_SYNC = re.compile(r"not in sync|not responding|no response|stk500\w*_(getsync|recv)|timeout|programmer is not responding", re.I)
+_BUSY = re.compile(r"can't open device|cannot open|access is denied|permission denied|resource busy|could not open port", re.I)
+_NOCONF = re.compile(r"can't open config file|cannot open config|avrdude\.conf", re.I)
+
+
 def classify_failure(lines: list[str]) -> tuple[str, str]:
-    t = "\n".join(lines[-30:]).lower()
-    if re.search(r"can't open device|cannot open|access is denied|permission denied|resource busy", t):
-        return "SERIAL_ERROR", "The serial port could not be opened — another program probably holds it."
-    if re.search(r"verification error|content mismatch|verify.*failed", t):
+    t = "\n".join(lines[-30:])
+    if _BUSY.search(t):
+        return "SERIAL_ERROR", "The serial port could not be opened — another program (Arduino IDE serial monitor/uploader, a terminal) probably holds it. Close it and retry."
+    if _NOCONF.search(t) and re.search(r"can't open|cannot|not found|no such", t, re.I):
+        return "TOOLCHAIN_MISSING", "avrdude could not find its avrdude.conf. Re-install avrdude from Tools → Remove, then Download."
+    if re.search(r"verification error|content mismatch|verify.*failed", t, re.I):
         return "VERIFICATION_FAILED", "Flash contents differ from the firmware after writing."
-    if re.search(r"not in sync|not responding|no response|stk500\w*_(getsync|recv)|timeout", t):
-        return "FLASH_FAILED", "The bootloader did not respond. Wrong board/baud (try the old-bootloader Nano variant), or the bootloader is missing."
+    if _SYNC.search(t):
+        return "FLASH_FAILED", "The bootloader did not respond. Check the board selection (Uno = 115200, Nano old bootloader/Duemilanove = 57600), the USB cable, and that no other program uses the port."
     return "FLASH_FAILED", "avrdude exited with an error"
+
+
+def _conf_args(exe: str) -> list[str]:
+    """Pass avrdude.conf explicitly when it sits next to the executable (do not rely on avrdude's search path)."""
+    conf = Path(exe).with_name("avrdude.conf")
+    return ["-C", str(conf)] if conf.is_file() else []
 
 
 class AvrFlasher(Flasher):
@@ -38,17 +52,27 @@ class AvrFlasher(Flasher):
         if not dev.port:
             raise FlashError("DEVICE_DISCONNECTED", "device has no serial port")
         b = BOARDS[board_id]
-        return [t.path, "-p", b["avr_part"], "-c", b["avr_programmer"], "-P", win_port(dev.port), "-b", str(b["default_baud"])]
+        return [t.path, *_conf_args(t.path), "-p", b["avr_part"], "-c", b["avr_programmer"], "-P", win_port(dev.port), "-b", str(b["default_baud"])]
 
     def identify(self, dev: DeviceRef, cancel: threading.Event | None = None) -> dict:
+        tried: list[str] = []
         for board_id in ("arduino-uno", "arduino-nano-old-bootloader", "arduino-mega2560"):
-            r = run_tool(self._base(dev, board_id) + ["-F"], cancel=cancel, timeout=20)
-            m = re.search(r"signature\s*(?:=|is)?\s*0x([0-9a-fA-F]{6})", "\n".join(r.lines))
+            if cancel is not None and cancel.is_set():
+                raise FlashError("CANCELLED", "cancelled")
+            argv = self._base(dev, board_id) + ["-F"]
+            r = run_tool(argv, cancel=cancel, timeout=15)
+            text = "\n".join(r.lines)
+            m = re.search(r"signature\s*(?:=|is)?\s*0x([0-9a-fA-F]{6})", text)
             if m and m.group(1).lower() in _SIGNATURES:
                 chip, _ = _SIGNATURES[m.group(1).lower()]
                 board = "arduino-mega2560" if "2560" in chip else board_id
                 return {"family": "avr", "chip": chip, "board": board}
-        raise FlashError("PROBE_FAILED", "No AVR bootloader answered (tried Uno, Nano old-bootloader, Mega 2560).")
+            code, msg = classify_failure(r.lines)
+            if code in ("SERIAL_ERROR", "TOOLCHAIN_MISSING"):
+                raise FlashError(code, msg, r.tail(10))  # not a bootloader problem: say so immediately
+            b = BOARDS[board_id]
+            tried.append(f"[{b['avr_programmer']} @ {b['default_baud']}] " + (" | ".join(r.lines[-3:]) or "(no output)"))
+        raise FlashError("PROBE_FAILED", "No AVR bootloader answered at 115200 (Uno), 57600 (old Nano/Duemilanove) or as Mega 2560. The port opens fine, so check that this really is an AVR Arduino, the USB cable, and that no other program is using the port.", "\n".join(tried)[-1500:])
 
     def run(self, req: FlashRequest) -> FlashOutcome:
         m = req.manifest
@@ -69,12 +93,26 @@ class AvrFlasher(Flasher):
 
         if req.kind == "flash":
             req.progress("flashing", 0, "Writing flash", f.filename)
-            r = run_tool(base + ["-D", "-U", f"flash:w:{path}:{fmt}"], on_line("flashing"), req.cancel, timeout=300)
-            if r.cancelled:
-                raise FlashError("CANCELLED", "Cancelled while writing; the board may hold a partial image.")
-            if not r.ok:
+            primary = int(base[base.index("-b") + 1])
+            attempts = [primary] + ([57600 if primary == 115200 else 115200] if BOARDS[m.board].get("avr_programmer") == "arduino" else [])
+            last: tuple[str, str, str] | None = None
+            for n, baud in enumerate(attempts):
+                base[base.index("-b") + 1] = str(baud)
+                if n:
+                    req.log(f"no answer at {attempts[0]} baud — retrying at {baud} baud (old bootloader?)")
+                    req.progress("flashing", 0, f"Retrying at {baud} baud", f.filename)
+                r = run_tool(base + ["-D", "-U", f"flash:w:{path}:{fmt}"], on_line("flashing"), req.cancel, timeout=300)
+                if r.cancelled:
+                    raise FlashError("CANCELLED", "Cancelled while writing; the board may hold a partial image.")
+                if r.ok:
+                    last = None
+                    break
                 code, msg = classify_failure(r.lines)
-                raise FlashError(code, msg, r.tail())
+                last = (code, msg, r.tail())
+                if code != "FLASH_FAILED" or not _SYNC.search(r.tail(30)):
+                    break  # only a no-sync result justifies trying the other speed
+            if last:
+                raise FlashError(last[0], last[1], last[2])
             req.progress("flashing", 100, "Write complete", f.filename)
         verified = False
         if req.verify or req.kind == "verify":

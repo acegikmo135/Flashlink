@@ -8,6 +8,8 @@ import { ManifestInputSchema, validateManifest } from "../jobs/manifest";
 import { isTerminal, type AgentRecord, type DeviceRecord, type Job } from "../jobs/types";
 import { rateLimit } from "../lib/ratelimit";
 import { hubOf } from "../lib/hub";
+import { COMPILE_BOARDS, compileSketch, type SourceFile } from "../compile/backend";
+import { sha256Hex } from "../lib/crypto";
 import { iso, publicAgent, publicDevice } from "../devices/public";
 
 export interface McpContext {
@@ -15,6 +17,7 @@ export interface McpContext {
   userId: string;
   tokenId: string;
   origin: string;
+  waitUntil: (p: Promise<unknown>) => void;
 }
 
 type ToolResult = { content: { type: "text"; text: string }[]; structuredContent: Record<string, unknown>; isError?: boolean };
@@ -90,7 +93,8 @@ export function buildServer(ctx: McpContext): McpServer {
     {
       instructions:
         "MCU Bridge flashes physical microcontrollers attached to the user's Windows PC. You compile firmware in your own environment; the PC never compiles. " +
-        "Workflow: list_devices → (identify_mcu) → build firmware → flash_firmware (with a manifest) → upload files with the returned curl commands → get_flash_job(wait_seconds) until is_terminal → capture_boot_log/read_serial. " +
+        "NO CODE SANDBOX? Use build_and_flash: send the Arduino sketch source and the board; the cloud compiles it and streams it to the PC in one call (Uno/Nano/Mega/ESP32). compile_firmware only compiles. "
+        + "Workflow with your own toolchain: list_devices → (identify_mcu) → build firmware → flash_firmware (with a manifest) → upload files with the returned curl commands → get_flash_job(wait_seconds) until is_terminal → capture_boot_log/read_serial. " +
         "Only treat firmware as flashed when get_flash_job reports status 'completed' with flash_confirmed=true. Every failure carries a specific error.code.",
     },
   );
@@ -397,6 +401,99 @@ export function buildServer(ctx: McpContext): McpServer {
       }),
   );
 
+
+  // ------------------------------------------------------- cloud compilation
+  const BoardEnum = z.enum(Object.keys(COMPILE_BOARDS) as [string, ...string[]]);
+  const sourceShape = {
+    sketch: z.string().min(1).max(200_000).describe("Contents of the main Arduino sketch (.ino) — setup()/loop() style C++."),
+    board: BoardEnum.describe("MCU Bridge board id to build for: arduino-uno, arduino-nano, arduino-nano-old-bootloader, arduino-mega2560, esp32-wroom-32, esp32-wrover, esp32-generic."),
+    extra_files: z
+      .array(z.object({ name: z.string().regex(/^[A-Za-z0-9_.-]{1,48}\.(ino|h|hpp|c|cpp|S)$/), content: z.string().max(100_000) }).strict())
+      .max(8)
+      .optional()
+      .describe("Additional source/header files of the sketch (e.g. config.h). Only Arduino built-in libraries (Servo, Wire, SPI, EEPROM, SoftwareSerial, …) are available; third-party libraries cannot be installed."),
+  };
+  const compileTo = async (a: { sketch: string; board: string; extra_files?: SourceFile[] }) => {
+    if (!(await rateLimit(env, `compile:${ctx.tokenId}`, 30, 3600))) return { ok: false as const, code: "RATE_LIMITED" as const, message: "Build limit reached (30 per hour)." };
+    return compileSketch(env, { board: a.board, sketch: a.sketch, files: a.extra_files ?? [] });
+  };
+  const PRIVACY = "Source is compiled by the cloud build service (default: Wokwi's public Arduino build server); it is not stored by MCU Bridge.";
+
+  server.registerTool(
+    "compile_firmware",
+    {
+      title: "Compile an Arduino sketch in the cloud",
+      description:
+        "Compile an Arduino sketch to firmware WITHOUT needing a code sandbox or any local toolchain. Returns build statistics, the SHA-256 and — for AVR boards — the Intel HEX text. Compile errors come back as compiler output in `error.details.stderr` so you can fix the code and retry. This does not touch any board; use build_and_flash to compile AND flash. Supports Arduino Uno/Nano/Mega and ESP32 (ESP32 output is the application image only).",
+      inputSchema: strict(sourceShape),
+      outputSchema: { ok: z.boolean(), board: z.string(), format: z.string(), size_bytes: z.number(), sha256: z.string(), stats: z.record(z.any()), intel_hex: z.string().nullable(), note: z.string() },
+      annotations: { title: "Compile an Arduino sketch in the cloud", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    (a) =>
+      guard(async () => {
+        const r = await compileTo(a);
+        if (!r.ok) return err(r.code, r.message, { details: { stderr: "stderr" in r ? r.stderr : undefined, stdout: "stdout" in r ? r.stdout : undefined }, hint: r.code === "COMPILE_FAILED" ? "Fix the compiler errors and call compile_firmware again." : "Retry shortly." });
+        return ok({
+          board: a.board,
+          format: r.kind === "ihex" ? "Intel HEX" : "ESP32 application image (.bin)",
+          size_bytes: r.bytes.length,
+          sha256: await sha256Hex(r.bytes),
+          stats: r.stats,
+          intel_hex: r.text && r.text.length <= 40_000 ? r.text : null,
+          note: `${PRIVACY} To put this on the board call build_and_flash.`,
+        });
+      }),
+  );
+
+  server.registerTool(
+    "build_and_flash",
+    {
+      title: "Compile in the cloud and flash the board",
+      description:
+        "One call for chats WITHOUT a code sandbox: compiles the Arduino sketch in the cloud, creates the flashing job for the connected board, and streams the firmware to the desktop app (no manual upload step). Returns immediately with the job; then poll get_flash_job (wait_seconds) until is_terminal and require status 'completed' with flash_confirmed=true before saying it is flashed. Device selection and safety checks are identical to flash_firmware. ESP32 builds are application-only (offset 0x10000) and need the Arduino-ESP32 bootloader/partition table already on the chip.",
+      inputSchema: strict({ ...sourceShape, device_id: DeviceIdParam, verify: z.boolean().optional().describe("Read back and verify after writing (default true)."), boot_log_seconds: z.number().min(0).max(30).optional().describe("Seconds of serial output to capture after flashing (default 4).") }),
+      outputSchema: { ok: z.boolean(), build: z.record(z.any()), job: z.record(z.any()), note: z.string() },
+      annotations: { title: "Compile in the cloud and flash the board", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    },
+    (a) =>
+      guard(async () => {
+        // 1) choose/validate the device first so we never compile for nothing
+        const snap = await hub().snapshot();
+        const sel = selectDevice(snap.devices, Object.fromEntries(snap.agents.map((x) => [x.id, x])), a.device_id);
+        if (!sel.ok) return fromFailure(sel);
+        // 2) compile
+        const r = await compileTo(a);
+        if (!r.ok) return err(r.code, r.message, { details: { stderr: "stderr" in r ? r.stderr : undefined, stdout: "stdout" in r ? r.stdout : undefined }, hint: r.code === "COMPILE_FAILED" ? "Fix the compiler errors and call build_and_flash again." : "Retry shortly." });
+        // 3) manifest (everything comes from the build itself — nothing guessed)
+        const sha = await sha256Hex(r.bytes);
+        const jobId = `build_${sha.slice(0, 10)}_${Date.now().toString(36)}`;
+        const board = COMPILE_BOARDS[a.board];
+        const manifest =
+          board.kind === "avr"
+            ? { job_id: jobId, target: { family: "avr", board: a.board }, files: [{ address: "0x0", filename: "sketch.hex", size: r.bytes.length, sha256: sha, format: "ihex" }] }
+            : { job_id: jobId, target: { family: "esp32", board: a.board, flash_size: r.esp!.flash_size }, flash_config: { mode: r.esp!.mode, frequency: r.esp!.frequency }, files: [{ address: "0x10000", filename: "firmware.bin", size: r.bytes.length, sha256: sha }] };
+        const v = validateManifest(manifest);
+        if (!v.ok) return err("MANIFEST_INVALID", "The compiled firmware does not fit this board.", { details: v.issues });
+        const created = await hub().createJob({ user_id: userId, manifest: v.manifest, kind: "flash", device_id: sel.device.id, verify: a.verify ?? true, boot_log_seconds: a.boot_log_seconds ?? 4, base_url: ctx.origin });
+        if (!created.ok) return fromFailure(created);
+        // 4) we ARE the uploader: stream the bytes into the relay (in memory only), the desktop downloads concurrently
+        const f = v.manifest.files[0];
+        const stub = env.TRANSFER_RELAY.get(env.TRANSFER_RELAY.idFromName(`${userId}:${jobId}`));
+        const upload = stub
+          .fetch("https://relay/upload/0", { method: "PUT", headers: { "x-relay-spec": JSON.stringify({ files: [{ size: f.size, sha256: f.sha256 }] }), "x-declared-length": String(f.size) }, body: r.bytes })
+          .then((x) => x.status)
+          .catch(() => 0);
+        ctx.waitUntil(upload);
+        await Promise.race([upload, new Promise((res) => setTimeout(res, 15_000))]);
+        const job = (await hub().getJob(jobId)) ?? created.job;
+        return ok({
+          build: { board: a.board, size_bytes: r.bytes.length, sha256: sha, stats: r.stats, device_id: sel.device.id, port: sel.device.port },
+          job: publicJob(job),
+          note: `${PRIVACY} NOT flashed yet: poll get_flash_job('${jobId}', wait_seconds=20) until is_terminal and check flash_confirmed.`,
+        });
+      }),
+  );
+
   server.registerTool(
     "get_flash_history",
     {
@@ -431,7 +528,7 @@ export function buildServer(ctx: McpContext): McpServer {
       title: "Supported boards and manifest rules",
       description: "Static registry of supported MCU families and boards: flashing tool, accepted file formats, allowed baud rates / flash modes / frequencies / sizes, address alignment, and package limits. Use it to build a valid manifest.",
       inputSchema: strict({ family: z.enum(["esp32", "esp32s2", "esp32s3", "esp32c3", "esp8266", "avr", "stm32", "ch32v003"]).optional() }),
-      outputSchema: { ok: z.boolean(), limits: z.record(z.any()), boards: z.array(z.record(z.any())), notes: z.array(z.string()) },
+      outputSchema: { ok: z.boolean(), limits: z.record(z.any()), boards: z.array(z.record(z.any())), cloud_compile_boards: z.array(z.string()), notes: z.array(z.string()) },
       annotations: { title: "Supported boards", ...readOnly },
     },
     ({ family }) =>
@@ -439,7 +536,9 @@ export function buildServer(ctx: McpContext): McpServer {
         ok({
           limits: LIMITS,
           boards: describeBoards(family),
+          cloud_compile_boards: Object.keys(COMPILE_BOARDS),
           notes: [
+            "No code sandbox? build_and_flash compiles Arduino sketches in the cloud for cloud_compile_boards and flashes them in one call.",
             "ESP: address must be 4096-aligned; typical ESP32 layout is bootloader 0x1000, partitions 0x8000, app 0x10000 (ESP32-S3/C3: bootloader 0x0). Never guess — take addresses from your build output (flasher_args.json).",
             "AVR: one Intel HEX (or raw bin) file at address 0x0. No bootloader/fuse changes are performed.",
             "STM32 and CH32V003 require an ST-Link / WCH-LinkE programmer; a plain USB-UART adapter cannot program them.",

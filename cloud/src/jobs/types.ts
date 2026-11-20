@@ -27,6 +27,8 @@ export const ERROR_CODES = [
   "SERIAL_ERROR",
   "PROBE_FAILED",
   "RATE_LIMITED",
+  "COMPILE_FAILED",
+  "COMPILER_UNAVAILABLE",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

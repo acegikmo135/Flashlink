@@ -139,7 +139,7 @@ export default {
             }),
           );
         }
-        return withCors(await handleMcp(request, { env, userId: auth.user_id, tokenId: auth.token_id, origin: url.origin }));
+        return withCors(await handleMcp(request, { env, userId: auth.user_id, tokenId: auth.token_id, origin: url.origin, waitUntil: (p) => ctx.waitUntil(p) }));
       }
 
       if (path === "/tools/manifest.py" && request.method === "GET") {

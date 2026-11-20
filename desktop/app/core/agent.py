@@ -505,6 +505,8 @@ class Agent:
             finish("completed", result)
         except ManifestError as e:
             finish("failed", None, FlashError("MANIFEST_INVALID", str(e), e.issues))
+        except images.ImageError as e:  # wrong chip / oversized / malformed image: a precise code, never a generic crash
+            finish("failed", None, FlashError(e.code, e.message))
         except TransferError as e:
             finish("cancelled" if e.code == "CANCELLED" else "failed", None, e)
         except FlashError as e:
@@ -608,7 +610,7 @@ class Agent:
                 baud = int(p.get("baud_rate") or 115200)
                 if not 1200 <= baud <= 3_000_000:
                     raise FlashError("SERIAL_ERROR", "baud_rate out of range")
-                style = "avr" if ref.family == "avr" else "esp"
+                style = "avr" if ref.family == "avr" else "esp" if ref.family else "auto"
                 if name == "reset":
                     cap = min(float(p.get("capture_seconds") or 0), 30)
                     if cap > 0:
@@ -633,22 +635,24 @@ class Agent:
 
     def _identify(self, dev, ref: DeviceRef) -> dict:
         candidates = [ref.family] if ref.family else (dev.cls.candidates or ["esp32", "avr"])
-        order = ["esp32" if c.startswith("esp") else c for c in candidates]
-        seen: list[str] = []
+        order = list(dict.fromkeys("esp32" if c.startswith("esp") else c for c in candidates))
+        if ref.vid == 0x0403 and "avr" in order:  # FTDI adapters are mostly Arduino-style boards: ask the AVR bootloader first
+            order = ["avr"] + [o for o in order if o != "avr"]
+        errors: list[str] = []
         last: FlashError | None = None
         for fam in order:
-            if fam in seen:
-                continue
-            seen.append(fam)
             try:
                 info = flasher_for(fam, ref).identify(ref)
             except FlashError as e:
                 last = e
+                errors.append(f"{fam}: {e.message}" + (f"\n    {e.details}" if isinstance(e.details, str) and e.details else ""))
+                if e.code in ("SERIAL_ERROR", "TOOLCHAIN_MISSING"):
+                    raise  # the port is busy / a tool is missing: trying other chips cannot help
                 continue
             self.hw.set_identified(dev.id, info)
             self.rescan_now()
             return {**info, "identified": True}
-        raise last or FlashError("PROBE_FAILED", "No supported MCU answered.")
+        raise FlashError("PROBE_FAILED", (last.message if last else "No supported MCU answered.") if len(errors) < 2 else "No supported MCU answered (ESP and AVR bootloaders were both tried).", "\n".join(errors)[-1800:])
 
     # ---------------------------------------------------------------- control
 

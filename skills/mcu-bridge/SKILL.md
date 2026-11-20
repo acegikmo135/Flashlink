@@ -16,7 +16,19 @@ tool or flasher.
 4. Use a **new unique `job_id`** for every different firmware package (8–64 chars `[A-Za-z0-9_-]`). Re-sending the identical manifest with the same id is safe (idempotent).
 5. The tools cannot run commands or touch files on the PC. Don't try; there is no such tool.
 
-## Workflow
+## No code sandbox? (plain chat) — use the cloud compiler
+If you cannot run a compiler yourself, do NOT ask the user to compile anything. Call **`build_and_flash`** with the Arduino sketch
+source and the board id (`arduino-uno`, `arduino-nano`, `arduino-nano-old-bootloader`, `arduino-mega2560`, `esp32-wroom-32`,
+`esp32-wrover`, `esp32-generic`). It checks the connected device, compiles in the cloud, creates the job and streams the firmware to
+the PC in one call. Then poll `get_flash_job` (wait_seconds 20) until `is_terminal`; only `completed` + `flash_confirmed=true` is success.
+`compile_firmware` compiles without flashing (returns Intel HEX for AVR) and is useful to check code first.
+- Compile errors come back in `error.details.stderr` — fix the sketch and call again. `COMPILER_UNAVAILABLE` → retry in a minute.
+- Only Arduino built-in libraries (Servo, Wire, SPI, EEPROM, SoftwareSerial…) exist; third-party libraries cannot be installed. Extra files go in `extra_files`.
+- Pick the board from `identify_mcu`/`list_devices`; for an FTDI/CH340 Nano that fails at 115200 use `arduino-nano-old-bootloader` (the desktop also retries at 57600 automatically).
+- ESP32 builds are application-only (flashed at 0x10000): the chip needs the Arduino-ESP32 bootloader/partition table already (true if it ever ran an Arduino sketch).
+- The source is compiled by a public cloud build service (Wokwi); tell the user if the code is sensitive.
+
+## Workflow (with your own toolchain)
 1. **`list_devices`** — read `situation`:
    - `no_agent` → tell the user to start MCU Bridge on their PC (tray icon says Connected).
    - `no_device` → ask them to plug the board in via USB; then `detect_new_devices` with `since_version` = the `registry_version` you got and `wait_seconds: 25`.
@@ -67,6 +79,7 @@ tool or flasher.
 | `MANIFEST_INVALID` | Fix every item in `error.details` (path + code). |
 | `TOOLCHAIN_MISSING` / `PROGRAMMER_MISSING` | A tool (avrdude, STM32CubeProgrammer/OpenOCD, wlink) or programmer (ST-Link/WCH-LinkE) is missing on the PC. Tell the user exactly which. |
 | `TRANSFER_FAILED` / `TRANSFER_TIMEOUT` / `HASH_MISMATCH` | Upload problem. Check file vs manifest, create a **new job**, re-upload. |
+| `COMPILE_FAILED` / `COMPILER_UNAVAILABLE` | Sketch errors (see `details.stderr`) / build service down — fix code or retry. |
 | `FLASH_FAILED` | Often can't enter bootloader: ask user to hold BOOT while connecting / check cable & port / close other serial programs (`SERIAL_ERROR`). |
 | `VERIFICATION_FAILED` | Written but readback differs: re-flash; check power/wiring/flash settings. |
 | `CANCELLED`, `JOB_EXPIRED`, `TIMEOUT`, `AGENT_DISCONNECTED` | Job did not complete; device may hold a partial image. Re-flash with a new `job_id`. |
