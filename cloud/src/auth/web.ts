@@ -169,7 +169,8 @@ export async function handleWeb(request: Request, env: Env, url: URL): Promise<R
     const origin = url.origin;
     const render = async (extra: { newToken?: string; error?: string } = {}) => {
       const agents = await env.DB.prepare("SELECT id, name, platform, created_at, last_seen_at FROM agents WHERE user_id = ?1 AND revoked_at IS NULL ORDER BY created_at DESC").bind(user.id).all<{ id: string; name: string; platform: string; created_at: number; last_seen_at: number | null }>();
-      const tokens = await env.DB.prepare("SELECT id, name, created_at, last_used_at FROM mcp_tokens WHERE user_id = ?1 AND revoked_at IS NULL ORDER BY created_at DESC").bind(user.id).all<{ id: string; name: string; created_at: number; last_used_at: number | null }>();
+      const tokens = await env.DB.prepare("SELECT id, name, created_at, last_used_at FROM mcp_tokens WHERE user_id = ?1 AND revoked_at IS NULL AND client_id IS NULL ORDER BY created_at DESC").bind(user.id).all<{ id: string; name: string; created_at: number; last_used_at: number | null }>();
+      const apps = await env.DB.prepare("SELECT r.client_id AS client_id, c.name AS name, MAX(r.created_at) AS since FROM oauth_refresh r JOIN oauth_clients c ON c.id = r.client_id WHERE r.user_id = ?1 AND r.expires_at > ?2 GROUP BY r.client_id, c.name").bind(user.id, Date.now()).all<{ client_id: string; name: string; since: number }>();
       const hub = hubOf(env, user.id);
       const snap = await hub.snapshot();
       return html(
@@ -178,6 +179,7 @@ export async function handleWeb(request: Request, env: Env, url: URL): Promise<R
           origin,
           agents: agents.results.map((a) => ({ ...a, online: !!snap.agents.find((x) => x.id === a.id)?.connected, devices: snap.devices.filter((d) => d.agent_id === a.id && d.connected).length })),
           tokens: tokens.results,
+          apps: apps.results,
           ...extra,
         }),
       );
@@ -188,7 +190,7 @@ export async function handleWeb(request: Request, env: Env, url: URL): Promise<R
     if (!f) return html(simplePage("Blocked", "Cross-site or malformed request."), 400);
     if (path === "/dashboard/tokens") {
       const name = (f.get("name") ?? "").trim().slice(0, 48) || "Claude Code";
-      const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM mcp_tokens WHERE user_id = ?1 AND revoked_at IS NULL").bind(user.id).first<{ n: number }>();
+      const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM mcp_tokens WHERE user_id = ?1 AND revoked_at IS NULL AND client_id IS NULL").bind(user.id).first<{ n: number }>();
       if ((count?.n ?? 0) >= 10) return render({ error: "Token limit reached (10). Revoke one first." });
       const token = `mcb_mcp_${randomToken(32)}`;
       await env.DB.prepare("INSERT INTO mcp_tokens (id, user_id, name, token_hash, created_at) VALUES (?1,?2,?3,?4,?5)").bind(randomId("tok", 8), user.id, name, await sha256Hex(token), Date.now()).run();
@@ -196,6 +198,14 @@ export async function handleWeb(request: Request, env: Env, url: URL): Promise<R
     }
     if (path === "/dashboard/tokens/revoke") {
       await env.DB.prepare("UPDATE mcp_tokens SET revoked_at = ?1 WHERE id = ?2 AND user_id = ?3 AND revoked_at IS NULL").bind(Date.now(), f.get("id") ?? "", user.id).run();
+      return redirect("/dashboard");
+    }
+    if (path === "/dashboard/apps/revoke") {
+      const cid = f.get("client_id") ?? "";
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM oauth_refresh WHERE user_id = ?1 AND client_id = ?2").bind(user.id, cid),
+        env.DB.prepare("UPDATE mcp_tokens SET revoked_at = ?1 WHERE user_id = ?2 AND client_id = ?3 AND revoked_at IS NULL").bind(Date.now(), user.id, cid),
+      ]);
       return redirect("/dashboard");
     }
     if (path === "/dashboard/agents/revoke") {

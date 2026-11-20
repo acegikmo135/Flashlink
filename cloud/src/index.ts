@@ -6,6 +6,7 @@ import { verifyToken } from "./lib/crypto";
 import { bearer, errorJson, json } from "./lib/http";
 import { pruneRateLimits, rateLimit } from "./lib/ratelimit";
 import { handleMcp } from "./mcp/server";
+import { handleOAuth, resourceMetadataUrl, withCors } from "./auth/oauth";
 import { MANIFEST_HELPER_PY } from "./tools/manifest-helper";
 
 export { UserHub } from "./durable-objects/user-hub";
@@ -95,16 +96,23 @@ export default {
         return relayFor(env, t).fetch(`https://relay/upload/${idx}`, { method: "PUT", headers: h, body: request.body });
       }
 
+      // ------------------------------------------------------------------ OAuth
+      const oauth = await handleOAuth(request, env, url);
+      if (oauth) return oauth;
+
       // --------------------------------------------------------------------- MCP
       if (path === "/mcp") {
+        if (request.method === "OPTIONS") return withCors(new Response(null, { status: 204 }));
         const auth = await authenticateMcp(env, bearer(request));
         if (!auth) {
-          return new Response(JSON.stringify({ jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: provide 'Authorization: Bearer mcb_mcp_…' (create a token on the MCU Bridge dashboard)." }, id: null }), {
-            status: 401,
-            headers: { "content-type": "application/json", "www-authenticate": 'Bearer realm="mcu-bridge"' },
-          });
+          return withCors(
+            new Response(JSON.stringify({ jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: sign in via OAuth (add this URL as a connector) or send 'Authorization: Bearer mcb_mcp_…'." }, id: null }), {
+              status: 401,
+              headers: { "content-type": "application/json", "www-authenticate": `Bearer realm="mcu-bridge", resource_metadata="${resourceMetadataUrl(url.origin)}"` },
+            }),
+          );
         }
-        return await handleMcp(request, { env, userId: auth.user_id, tokenId: auth.token_id, origin: url.origin });
+        return withCors(await handleMcp(request, { env, userId: auth.user_id, tokenId: auth.token_id, origin: url.origin }));
       }
 
       if (path === "/tools/manifest.py" && request.method === "GET") {

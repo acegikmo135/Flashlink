@@ -13,7 +13,7 @@ Claude Code Cloud ──MCP──▶ Cloudflare Worker (Durable Objects + D1) �
   in a bounded in-memory window while it streams, and is deleted from the PC after the job.
 * **Desktop:** Python + PySide6 (no Electron/WebEngine/Node/WSL/Docker). Outbound WebSocket only: no localhost server, no port forwarding.
 * **MCP:** Streamable HTTP at `/mcp`, 14 tools with strict schemas and structured output.
-* **Auth:** Wrangler OAuth for *you, the deployer*; a separate application-level pairing flow (link + QR + code) for the desktop.
+* **Auth:** MCP supports OAuth 2.1 (add the URL as a claude.ai custom connector) or static Bearer tokens. Wrangler OAuth is for *you, the deployer*; a separate application-level pairing flow (link + QR + code) for the desktop.
 
 ## Quick start
 

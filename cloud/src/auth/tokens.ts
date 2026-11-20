@@ -30,8 +30,8 @@ export interface McpAuth {
 export async function authenticateMcp(env: Env, token: string | null): Promise<McpAuth | null> {
   if (!token || !token.startsWith("mcb_mcp_") || token.length > 100) return null;
   const hash = await sha256Hex(token);
-  const row = await env.DB.prepare("SELECT id, user_id, last_used_at FROM mcp_tokens WHERE token_hash = ?1 AND revoked_at IS NULL")
-    .bind(hash)
+  const row = await env.DB.prepare("SELECT id, user_id, last_used_at FROM mcp_tokens WHERE token_hash = ?1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?2)")
+    .bind(hash, Date.now())
     .first<{ id: string; user_id: string; last_used_at: number | null }>();
   if (!row) return null;
   if (!row.last_used_at || Date.now() - row.last_used_at > 60_000) {

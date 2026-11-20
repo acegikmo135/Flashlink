@@ -34,7 +34,17 @@ Optional tools (only for the families you use) go in `tools\` next to the exe �
 USB drivers: CP210x / CH340 / FTDI bridges need their usual Windows drivers (Windows Update installs most); ST-Link needs the
 ST-Link driver; WCH-LinkE needs the WCH driver.
 
-## 4. Connect Claude Code (Cloud)
+## 4a. Add as a claude.ai connector (recommended — OAuth, no token to copy)
+
+1. claude.ai → Settings → Connectors → **Add custom connector**.
+2. Name: `MCU Bridge`, URL: `https://<your-worker>.workers.dev/mcp` (leave OAuth client id/secret empty — clients register themselves).
+3. Press **Connect**: a browser tab opens on your Worker, you sign in with your MCU Bridge account and press **Allow access**.
+4. Start a new Claude Code Cloud session; the connector's tools are loaded at session start.
+
+Manage or disconnect connectors under **Dashboard → Connected apps**. Access tokens last 1 hour and refresh automatically
+(refresh tokens rotate; a replayed one revokes the whole grant).
+
+## 4b. Connect Claude Code with a static token
 
 ```bash
 claude mcp add --transport http mcu-bridge https://<your-worker>.workers.dev/mcp \

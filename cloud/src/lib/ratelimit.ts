@@ -22,4 +22,8 @@ export async function rateLimit(env: Env, key: string, limit: number, windowSec:
 export async function pruneRateLimits(env: Env): Promise<void> {
   const cutoff = Math.floor(Date.now() / 1000) - 3600;
   await env.DB.prepare("DELETE FROM rate_limits WHERE window_start < ?1").bind(cutoff).run();
+  const now = Date.now();
+  await env.DB.prepare("DELETE FROM oauth_codes WHERE expires_at < ?1").bind(now).run();
+  await env.DB.prepare("DELETE FROM oauth_refresh WHERE expires_at < ?1").bind(now).run();
+  await env.DB.prepare("DELETE FROM mcp_tokens WHERE expires_at IS NOT NULL AND expires_at < ?1").bind(now - 86_400_000).run();
 }

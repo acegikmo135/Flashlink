@@ -76,11 +76,36 @@ export function simplePage(title: string, message: string, user?: string | null)
   return layout(title, `<h1>${esc(title)}</h1><p>${esc(message)}</p>`, { user });
 }
 
+export function consentPage(o: { user: string; clientName: string; redirectHost: string; fields: Record<string, string> }): string {
+  const hidden = Object.entries(o.fields).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join("");
+  return layout(
+    "Authorize",
+    `<h1>Authorize ${esc(o.clientName)}</h1>
+<p>Signed in as <b style="color:var(--fg)">${esc(o.user)}</b>. <b style="color:var(--fg)">${esc(o.clientName)}</b> (redirects to <span class="mono">${esc(o.redirectHost)}</span>) is asking to use your MCU Bridge account.</p>
+<div class="card"><p style="margin:0 0 6px"><b style="color:var(--fg)">It will be able to:</b></p>
+<div class="row"><span>List your connected microcontrollers and read their status</span></div>
+<div class="row"><span>Flash, verify and reset boards you have allowed in the desktop app</span></div>
+<div class="row"><span>Read serial output and boot logs</span></div>
+<p style="font-size:13px;margin:14px 0 0">It can never run commands or access files on your PC. You can revoke access at any time from the dashboard (Connected apps). Only approve if you just added this connector yourself.</p>
+<form method="post" action="/oauth/authorize/decision">${hidden}<div class="actions"><button name="decision" value="approve">Allow access</button><button class="ghost" name="decision" value="deny">Cancel</button></div></form></div>`,
+    { user: o.user },
+  );
+}
+
+/** Interstitial that hands control back to the client (a CSP-safe alternative to a form-post redirect). */
+export function redirectPage(to: string): string {
+  return layout(
+    "Returning to app",
+    `<meta http-equiv="refresh" content="0;url=${esc(to)}"><h1>Returning to the application…</h1><p>If nothing happens, <a href="${esc(to)}">continue</a>. You can close this tab afterwards.</p>`,
+  );
+}
+
 export interface DashboardData {
   email: string;
   origin: string;
   agents: { id: string; name: string; platform: string; created_at: number; last_seen_at: number | null; online: boolean; devices: number }[];
   tokens: { id: string; name: string; created_at: number; last_used_at: number | null }[];
+  apps?: { client_id: string; name: string; since: number }[];
   newToken?: string;
   error?: string;
 }
@@ -126,6 +151,11 @@ ${d.error ? `<div class="err">${esc(d.error)}</div>` : ""}
 <h2>MCP access tokens</h2><div class="card">${tokens}
 <form method="post" action="/dashboard/tokens" style="margin-top:14px;display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label for="tn" style="margin-top:0">New token name</label><input id="tn" type="text" name="name" value="Claude Code" maxlength="48" required></div><button>Create token</button></form></div>
 ${tokenBlock}
+<h2>Connected apps (OAuth)</h2><div class="card">${
+      d.apps?.length
+        ? d.apps.map((a) => `<div class="row"><div><b>${esc(a.name)}</b><div class="meta">connected ${ago(a.since)}</div></div><form method="post" action="/dashboard/apps/revoke" onsubmit="return confirm('Disconnect this app?')"><input type="hidden" name="client_id" value="${esc(a.client_id)}"><button class="danger">Disconnect</button></form></div>`).join("")
+        : `<p style="margin:0">No connected apps. Add <span class="mono">${esc(d.origin)}/mcp</span> as a custom connector in claude.ai and approve the sign-in.</p>`
+    }</div>
 <h2>MCP endpoint</h2><div class="card"><pre>${esc(d.origin)}/mcp</pre><p style="margin:12px 0 0;font-size:13px">Streamable HTTP · authenticate with <span class="mono">Authorization: Bearer &lt;token&gt;</span>. Claude Code Cloud also needs <span class="mono">${esc(new URL(d.origin).host)}</span> in its environment's allowed network hosts so it can upload firmware.</p></div>`,
     { user: d.email },
   );

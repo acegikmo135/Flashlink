@@ -8,6 +8,7 @@ Flashing changes hardware, so the design assumes the MCP side may be compromised
 | Accounts | PBKDF2-SHA256 (100k, per-user salt), invite-code gated sign-up, HttpOnly/SameSite=Lax session cookies, `Sec-Fetch-Site` CSRF check, CSP, rate limits. |
 | Desktop pairing | Short-lived (10 min) pairing session; 8-char code shown on both the desktop and the approval page; poll secret never leaves the desktop; credential issued once, stored hashed (SHA-256) in D1. |
 | Desktop credential | Per-installation, revocable (dashboard or the desktop's Settings), stored with Windows DPAPI. Revocation closes the socket immediately and fails the agent's jobs. |
+| MCP OAuth | OAuth 2.1 authorization-code flow with mandatory PKCE (S256), public clients, dynamic registration with strict redirect-URI rules (https / loopback / custom scheme, exact match), explicit consent page, single-use 10-minute codes, 1-hour access tokens, rotating 30-day refresh tokens with reuse detection, per-app revocation on the dashboard. |
 | MCP | Separate per-token Bearer credentials (hashed), revocable, 120 calls/min/token. A token only reaches *its own account's* hub (one Durable Object per user). |
 | Job authorization | HMAC-signed, job-bound, scope-bound (`dl`/`ul`), expiring tokens; the download token is also bound to the agent id. |
 | Firmware | Exact size + SHA-256 enforced by the relay (end-to-end) and again by the agent; per-file/package size caps; image-header chip-id check; never stored in the cloud; deleted from the PC after the job (`finally`). |

@@ -1,0 +1,202 @@
+"""OAuth 2.1 for MCP: exercised exactly like a connector (claude.ai) would, against the local Worker."""
+import base64
+import hashlib
+import json
+import re
+import secrets
+import urllib.error
+import urllib.parse
+import urllib.request
+
+from conftest import BASE, Web, http
+
+CALLBACK = "https://claude.ai/api/mcp/auth_callback"
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+def raw_get(path):
+    op = urllib.request.build_opener(_NoRedirect)
+    try:
+        r = op.open(BASE + path)
+        return r.status, r.read().decode(), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode(), dict(e.headers)
+
+
+def pkce():
+    v = base64.urlsafe_b64encode(secrets.token_bytes(48)).decode().rstrip("=")
+    c = base64.urlsafe_b64encode(hashlib.sha256(v.encode()).digest()).decode().rstrip("=")
+    return v, c
+
+
+def register(name="Claude", uris=None):
+    s, b, _ = http("POST", BASE + "/oauth/register", json.dumps({"client_name": name, "redirect_uris": uris if uris is not None else [CALLBACK]}).encode(), {"Content-Type": "application/json"})
+    return s, json.loads(b)
+
+
+def token_req(**form):
+    s, b, _ = http("POST", BASE + "/oauth/token", urllib.parse.urlencode(form).encode(), {"Content-Type": "application/x-www-form-urlencoded"})
+    return s, json.loads(b)
+
+
+def authorize(web, client_id, challenge, state="st4te", redirect=CALLBACK, approve=True, **extra):
+    q = {"response_type": "code", "client_id": client_id, "redirect_uri": redirect, "code_challenge": challenge, "code_challenge_method": "S256", "state": state, **extra}
+    st, page = web.get("/oauth/authorize?" + urllib.parse.urlencode(q))
+    assert st == 200 and "Authorize" in page, (st, page[:200])
+    fields = {k: v for k, v in re.findall(r'<input type="hidden" name="([a-z_]+)" value="([^"]*)"', page)}
+    st, page = web.post("/oauth/authorize/decision", **{k: v.replace("&amp;", "&") for k, v in fields.items()}, decision="approve" if approve else "deny")
+    m = re.search(r'url=([^"]+)"', page)
+    assert st == 200 and m, page[:300]
+    u = urllib.parse.urlparse(m.group(1).replace("&amp;", "&"))
+    return urllib.parse.parse_qs(u.query), m.group(1)
+
+
+def mcp_status(access):
+    s, b, _ = http("POST", BASE + "/mcp", json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).encode(), {"Authorization": "Bearer " + access, "Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
+    return s
+
+
+def test_discovery(stack):
+    s, b, h = http("POST", BASE + "/mcp", b"{}", {"Content-Type": "application/json"})
+    assert s == 401 and f'resource_metadata="{BASE}/.well-known/oauth-protected-resource"' in h["WWW-Authenticate"]
+    s, b, _ = http("GET", BASE + "/.well-known/oauth-protected-resource")
+    pr = json.loads(b)
+    assert pr["resource"] == BASE + "/mcp" and pr["authorization_servers"] == [BASE]
+    s, b, _ = http("GET", BASE + "/.well-known/oauth-authorization-server")
+    md = json.loads(b)
+    assert md["code_challenge_methods_supported"] == ["S256"] and md["registration_endpoint"].endswith("/oauth/register")
+    assert md["token_endpoint_auth_methods_supported"] == ["none"]
+    s, _, h = http("OPTIONS", BASE + "/oauth/token")
+    assert s == 204 and h["Access-Control-Allow-Origin"] == "*"
+
+
+def test_registration_validation(stack):
+    s, c = register()
+    assert s == 201 and c["client_id"].startswith("cli_") and c["token_endpoint_auth_method"] == "none"
+    for bad in (["javascript:alert(1)"], ["http://evil.example/cb"], ["https://x.example/cb#frag"], [], ["data:text/html,x"], "https://x.example/cb"):
+        s, r = register(uris=bad)
+        assert s == 400 and r["error"] == "invalid_redirect_uri", bad
+    assert register(uris=["http://127.0.0.1:33418/callback"])[0] == 201
+    assert register(uris=["cursor://anysphere.cursor-retrieval/oauth/callback"])[0] == 201
+
+
+def test_full_flow_pkce_refresh_rotation_and_revocation(stack):
+    _, client = register("Test Connector")
+    cid = client["client_id"]
+
+    # not signed in -> bounced to login, and `next` preserves the authorize request
+    v, ch = pkce()
+    q = urllib.parse.urlencode({"response_type": "code", "client_id": cid, "redirect_uri": CALLBACK, "code_challenge": ch, "code_challenge_method": "S256", "state": "abc"})
+    s, _, h = raw_get("/oauth/authorize?" + q)
+    assert s == 303 and h["Location"].startswith("/login?next=%2Foauth%2Fauthorize")
+
+    # signed in -> consent -> code
+    params, _ = authorize(stack.web, cid, ch, state="abc")
+    assert params["state"] == ["abc"] and "code" in params
+    code = params["code"][0]
+
+    # wrong verifier fails and burns nothing else; code is single-use regardless
+    v2, _ = pkce()
+    s, r = token_req(grant_type="authorization_code", client_id=cid, code=code, redirect_uri=CALLBACK, code_verifier=v2)
+    assert s == 400 and r["error"] == "invalid_grant"
+    s, r = token_req(grant_type="authorization_code", client_id=cid, code=code, redirect_uri=CALLBACK, code_verifier=v)
+    assert s == 400 and r["error"] == "invalid_grant", "code must be single-use even after a failed attempt"
+
+    # happy path
+    params, _ = authorize(stack.web, cid, ch)
+    code = params["code"][0]
+    s, r = token_req(grant_type="authorization_code", client_id=cid, code=code, redirect_uri="https://evil.example/cb", code_verifier=v)
+    assert s == 400 and r["error"] == "invalid_grant"  # redirect mismatch (also burns the code)
+    params, _ = authorize(stack.web, cid, ch)
+    s, tok = token_req(grant_type="authorization_code", client_id=cid, code=params["code"][0], redirect_uri=CALLBACK, code_verifier=v)
+    assert s == 200 and tok["token_type"] == "Bearer" and tok["access_token"].startswith("mcb_mcp_") and tok["refresh_token"].startswith("mcb_rt_") and tok["expires_in"] == 3600
+
+    # the access token drives the real MCP endpoint
+    assert mcp_status(tok["access_token"]) == 200
+
+    # refresh rotates
+    s, tok2 = token_req(grant_type="refresh_token", client_id=cid, refresh_token=tok["refresh_token"])
+    assert s == 200 and tok2["access_token"] != tok["access_token"] and tok2["refresh_token"] != tok["refresh_token"]
+    assert mcp_status(tok2["access_token"]) == 200
+
+    # replaying the OLD refresh token = theft signal: whole grant revoked
+    s, r = token_req(grant_type="refresh_token", client_id=cid, refresh_token=tok["refresh_token"])
+    assert s == 400 and r["error"] == "invalid_grant" and "reuse" in r["error_description"]
+    assert mcp_status(tok2["access_token"]) == 401
+    assert token_req(grant_type="refresh_token", client_id=cid, refresh_token=tok2["refresh_token"])[0] == 400
+
+
+def test_dashboard_lists_and_revokes_connected_app(stack):
+    _, client = register("Revocable App")
+    v, ch = pkce()
+    params, _ = authorize(stack.web, client["client_id"], ch)
+    s, tok = token_req(grant_type="authorization_code", client_id=client["client_id"], code=params["code"][0], redirect_uri=CALLBACK, code_verifier=v)
+    assert s == 200 and mcp_status(tok["access_token"]) == 200
+    st, page = stack.web.get("/dashboard")
+    assert "Revocable App" in page and "Connected apps" in page
+    # OAuth tokens are not listed among manual tokens
+    assert "OAuth: Revocable App" not in page
+    st, _ = stack.web.post("/dashboard/apps/revoke", client_id=client["client_id"])
+    assert mcp_status(tok["access_token"]) == 401
+    assert token_req(grant_type="refresh_token", client_id=client["client_id"], refresh_token=tok["refresh_token"])[0] == 400
+
+
+def test_authorize_request_validation(stack):
+    _, client = register("Strict")
+    cid = client["client_id"]
+    v, ch = pkce()
+    base = {"response_type": "code", "client_id": cid, "redirect_uri": CALLBACK, "code_challenge": ch, "code_challenge_method": "S256", "state": "s"}
+    # unregistered redirect: shown as an error page, never redirected
+    s, page, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "redirect_uri": "https://evil.example/cb"}))
+    assert s == 400 and "Location" not in h
+    # unknown client
+    s, page, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "client_id": "cli_nope"}))
+    assert s == 400 and "Location" not in h
+    # PKCE missing / plain method -> redirect with error
+    for bad in ({"code_challenge": ""}, {"code_challenge_method": "plain"}):
+        s, _, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, **bad}))
+        assert s == 302 and "error=invalid_request" in h["Location"] and h["Location"].startswith(CALLBACK)
+    # wrong resource
+    s, _, h = raw_get("/oauth/authorize?" + urllib.parse.urlencode({**base, "resource": "https://other.example/mcp"}))
+    assert s == 302 and "error=invalid_target" in h["Location"]
+    # deny
+    params, _ = authorize(stack.web, cid, ch, approve=False)
+    assert params["error"] == ["access_denied"] and "code" not in params
+
+
+def test_consent_decision_cannot_be_forged_or_cross_site(stack):
+    _, client = register("Forge")
+    v, ch = pkce()
+    op = urllib.request.build_opener(_NoRedirect)
+    req = urllib.request.Request(BASE + "/oauth/authorize/decision", urllib.parse.urlencode({"client_id": client["client_id"], "redirect_uri": CALLBACK, "code_challenge": ch, "decision": "approve"}).encode(), {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        r = op.open(req)
+        s, body = r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        s, body = e.code, e.read().decode()
+    assert s == 303 and "code=" not in body  # no session: bounced to login, never issues a code
+    req = urllib.request.Request(BASE + "/oauth/authorize/decision", urllib.parse.urlencode({"client_id": client["client_id"], "redirect_uri": CALLBACK, "code_challenge": ch, "decision": "approve"}).encode(), {"Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded", "Cookie": "; ".join(f"{c.name}={c.value}" for c in stack.web.jar)})
+    try:
+        s = op.open(req).status
+    except urllib.error.HTTPError as e:
+        s = e.code
+    assert s == 400, "a signed-in user's browser being tricked cross-site must not approve anything"
+    # tampering with hidden fields (redirect_uri swapped) is rejected on re-validation
+    web = stack.web
+    st, page = web.post("/oauth/authorize/decision", client_id=client["client_id"], redirect_uri="https://evil.example/cb", state="x", code_challenge=ch, resource=BASE + "/mcp", decision="approve")
+    assert st == 400 and "Invalid redirect" in page
+
+
+def test_token_endpoint_edge_cases(stack):
+    assert token_req(grant_type="client_credentials", client_id="cli_x")[0] == 401  # unknown client first
+    _, c = register("Edge")
+    s, r = token_req(grant_type="client_credentials", client_id=c["client_id"])
+    assert s == 400 and r["error"] == "unsupported_grant_type"
+    s, r = token_req(grant_type="authorization_code", client_id=c["client_id"], code="x", code_verifier="short")
+    assert s == 400 and r["error"] == "invalid_request"
+    s, r = token_req(grant_type="refresh_token", client_id=c["client_id"], refresh_token="mcb_rt_bogus")
+    assert s == 400 and r["error"] == "invalid_grant"
