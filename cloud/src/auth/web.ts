@@ -78,7 +78,7 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
   const unauth = () => errorJson(401, "UNAUTHENTICATED", "Sign in required.");
 
   if (path === "/api/web/session" && method === "GET") {
-    return json({ ok: true, user, config: { origin: url.origin, installer_url: env.INSTALLER_URL ?? null, signup_requires_invite: true } });
+    return json({ ok: true, user, config: { origin: url.origin, installer_url: `${url.origin}/download/MCUBridge-Setup.exe`, signup_requires_invite: true } });
   }
 
   if (path === "/api/web/signup" && method === "POST") {

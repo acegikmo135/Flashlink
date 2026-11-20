@@ -7,6 +7,7 @@ import { verifyToken } from "./lib/crypto";
 import { bearer, errorJson, json } from "./lib/http";
 import { pruneRateLimits, rateLimit } from "./lib/ratelimit";
 import { handleMcp } from "./mcp/server";
+import { serveInstaller } from "./installer";
 import { handleOAuth, resourceMetadataUrl, withCors } from "./auth/oauth";
 import { MANIFEST_HELPER_PY } from "./tools/manifest-helper";
 
@@ -144,6 +145,9 @@ export default {
       if (path === "/tools/manifest.py" && request.method === "GET") {
         return new Response(MANIFEST_HELPER_PY, { headers: { "content-type": "text/x-python; charset=utf-8", "cache-control": "public, max-age=300" } });
       }
+
+      // ------------------------------------------------------- installer download (edge)
+      if (path === "/download/MCUBridge-Setup.exe" && (request.method === "GET" || request.method === "HEAD")) return await serveInstaller(request, env, ctx);
 
       // ------------------------------------------------------------ web app + API
       const api = await handleWebApi(request, env, url);

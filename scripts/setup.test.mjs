@@ -9,3 +9,12 @@ test("toml database id", () => {
   const t = '[[d1_databases]]\nbinding = "DB"\ndatabase_id = "0000"\n';
   assert.equal(getDatabaseId(setDatabaseId(t, "abc-1")), "abc-1");
 });
+
+import { planParts } from "./publish-installer.mjs";
+test("planParts splits into <=limit parts that sum to the total", () => {
+  const sizes = planParts(29389606);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 29389606);
+  assert.ok(sizes.every((s) => s <= 10 * 1024 * 1024));
+  assert.equal(sizes.length, 3);
+  assert.deepEqual(planParts(5), [5]);
+});

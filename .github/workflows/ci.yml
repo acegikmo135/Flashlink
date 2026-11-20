@@ -61,6 +61,14 @@ jobs:
           if ($p.ExitCode -ne 0) { Get-Content "$env:RUNNER_TEMP\setup.log" -Tail 40; throw "installer failed" }
           if (-not (Test-Path "$dir\MCUBridge.exe")) { throw "MCUBridge.exe not installed" }
           "Installed size: {0:N1} MB" -f ((Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum/1MB)
+          # the Start-menu entry must exist (per-user or all-users Programs folder)
+          $cands = @("$env:APPDATA\Microsoft\Windows\Start Menu\Programs", "$env:ProgramData\Microsoft\Windows\Start Menu\Programs")
+          $lnk = $cands | ForEach-Object { Get-ChildItem $_ -Recurse -Filter "MCU Bridge*.lnk" -ErrorAction SilentlyContinue } | Select-Object -First 1
+          if (-not $lnk) { $cands | ForEach-Object { "searched: $_" ; Get-ChildItem $_ -ErrorAction SilentlyContinue | Select-Object -First 20 Name }; throw "NO Start menu shortcut was created" }
+          "Start menu shortcut: $($lnk.FullName)"
+          $sh = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk.FullName)
+          "shortcut target: $($sh.TargetPath)"
+          if ($sh.TargetPath -ne "$dir\MCUBridge.exe") { throw "shortcut points to the wrong target" }
       - name: Self-test the installed app (offscreen UI, all pages)
         timeout-minutes: 4
         shell: pwsh
