@@ -13,7 +13,7 @@ from app.core.config import APP_NAME, SettingsStore, data_dir
 from app.hardware.devices import HardwareManager
 
 from . import theme
-from .widgets import NavIcon, Segmented, fade_in, label
+from .widgets import BrandMark, NavButton, Segmented, UserCard, fade_in, label
 
 
 def make_icon(size: int = 64, color: str = theme.FG, bg: str | None = None) -> QIcon:
@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("MCU Bridge")
         self.setWindowIcon(make_icon(64))
         self.resize(1040, 720)
-        self.setMinimumSize(860, 580)
+        self.setMinimumSize(880, 600)
         root = QWidget()
         root.setObjectName("root")
         self.setCentralWidget(root)
@@ -100,14 +100,17 @@ class MainWindow(QMainWindow):
         hl.setSpacing(0)
         self.sidebar = QWidget()
         self.sidebar.setObjectName("sidebar")
-        self.sidebar.setFixedWidth(188)
+        self.sidebar.setFixedWidth(232)
         sl = QVBoxLayout(self.sidebar)
-        sl.setContentsMargins(0, 22, 0, 16)
-        sl.setSpacing(2)
-        brand = label("MCU BRIDGE", "brand")
-        brand.setContentsMargins(20, 0, 0, 18)
-        sl.addWidget(brand)
-        sl.setContentsMargins(10, 24, 10, 16)
+        sl.setContentsMargins(12, 22, 12, 14)
+        sl.setSpacing(4)
+        brand_row = QHBoxLayout()
+        brand_row.setContentsMargins(8, 0, 0, 14)
+        brand_row.setSpacing(10)
+        brand_row.addWidget(BrandMark(26))
+        brand_row.addWidget(label("MCU Bridge", "brand"))
+        brand_row.addStretch(1)
+        sl.addLayout(brand_row)
         self.navs: list[QPushButton] = []
         # sliding selection pill, drawn behind the (transparent) nav buttons
         self.indicator = QFrame(self.sidebar)
@@ -115,26 +118,18 @@ class MainWindow(QMainWindow):
         self._style_indicator()
         glyphs = [("grid", "#0a84ff"), ("pulse", "#ff9f0a"), ("tools", "#30d158"), ("person", "#bf5af2"), ("gear", "#8e8e93")]
         for i, name in enumerate(self.SECTIONS):
-            b = QPushButton(name)
-            b.setObjectName("nav")
-            b.setCursor(Qt.PointingHandCursor)
-            b.setFixedHeight(42)
+            b = NavButton(name, *glyphs[i])
             b.clicked.connect(lambda _=False, i=i: self.go(i))
-            icon = NavIcon(*glyphs[i])
-            icon.setParent(b)
-            icon.move(12, 7)
             sl.addWidget(b)
             self.navs.append(b)
         sl.addStretch(1)
         self.theme_seg = Segmented([("light", "Light"), ("dark", "Dark"), ("auto", "Auto")], agent.store.settings.theme, 30)
         self.theme_seg.changed.connect(self._set_theme)
-        seg_wrap = QHBoxLayout()
-        seg_wrap.setContentsMargins(14, 0, 14, 8)
-        seg_wrap.addWidget(self.theme_seg)
-        sl.addLayout(seg_wrap)
-        self.foot = label("", "dim")
-        self.foot.setContentsMargins(20, 0, 8, 0)
-        sl.addWidget(self.foot)
+        sl.addSpacing(8)
+        sl.addWidget(self.theme_seg)
+        sl.addSpacing(4)
+        self.user_card = UserCard()
+        sl.addWidget(self.user_card)
         hl.addWidget(self.sidebar)
 
         self.stack = QStackedWidget()
@@ -264,7 +259,8 @@ class MainWindow(QMainWindow):
         if hasattr(cur, "refresh") and cur is not self.pairing:
             cur.refresh()  # type: ignore[attr-defined]
         active = [j for j in st.jobs if not j.finished]
-        self.foot.setText(("● " + ("flashing" if active else st.connection)) if st.connection != "connected" or active else "")
+        label_, color = (("Flashing…", theme.WARN) if active else {"connected": ("Connected", theme.OK), "connecting": ("Connecting…", theme.WARN), "offline": ("Offline — reconnecting", theme.ERR)}.get(st.connection, (st.connection.title(), theme.DIM)))
+        self.user_card.set(st.account_email or self.agent.store.settings.account_email, label_, color)
 
 
 def run_gui(store: SettingsStore, hw: HardwareManager, agent: Agent, start_hidden: bool = False) -> int:

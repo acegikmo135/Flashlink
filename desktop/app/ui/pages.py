@@ -172,10 +172,10 @@ class DashboardPage(QWidget):
         lay.addSpacing(6)
         lay.addWidget(label("DEVICES", "h2"))
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["DEVICE", "PORT", "STATE", "REMOTE FLASHING", "LAST ACTIVITY"])
+        self.table.setHorizontalHeaderLabels(["DEVICE", "PORT", "STATE", "REMOTE", "LAST ACTIVITY"])
         style_table(self.table)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        for i, w in ((1, 70), (2, 100), (3, 140), (4, 100)):
+        for i, w in ((1, 64), (2, 92), (3, 80), (4, 110)):
             self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Fixed)
             self.table.setColumnWidth(i, w)
         self.table.cellDoubleClicked.connect(self._open_row)

@@ -356,3 +356,91 @@ def fade_in(container: QWidget, ms: int = 280) -> None:
 
 
 _ = (QPushButton, _GLYPHS)
+
+
+class BrandMark(QWidget):
+    """Logo mark: rounded square with an inner square outline and a dot (same glyph as the web app)."""
+
+    def __init__(self, size: int = 26) -> None:
+        super().__init__()
+        self._s = size
+        self.setFixedSize(size, size)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        s = float(self._s)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(theme.FG))
+        p.drawRoundedRect(QRectF(0, 0, s, s), s * 0.23, s * 0.23)
+        pen = QPen(QColor(theme.BG))
+        pen.setWidthF(s * 0.078)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        p.drawRect(QRectF(s * 0.25, s * 0.25, s * 0.5, s * 0.5))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(theme.BG))
+        p.drawEllipse(QPointF(s / 2, s / 2), s * 0.094, s * 0.094)
+
+
+class NavButton(QPushButton):
+    """Sidebar row: coloured icon tile + label, icon always vertically centred."""
+
+    def __init__(self, text: str, glyph: str, color: str) -> None:
+        super().__init__(text)
+        self.setObjectName("nav")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedHeight(44)
+        self._icon = NavIcon(glyph, color)
+        self._icon.setParent(self)
+        self._place()
+
+    def _place(self) -> None:
+        self._icon.move(12, (self.height() - self._icon.height()) // 2)
+
+    def resizeEvent(self, e) -> None:  # noqa: N802
+        super().resizeEvent(e)
+        self._place()
+
+
+class UserCard(QFrame):
+    """Account chip at the bottom of the sidebar: avatar initial, email and connection state."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("usercard")
+        self._email = ""
+        self._status = ("", "")
+        self.setFixedHeight(54)
+
+    def set(self, email: str, status: str, color: str) -> None:
+        if (email, status, color) != (self._email, self._status[0], self._status[1]):
+            self._email, self._status = email, (status, color)
+            self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        fill = QColor(theme.LINE2)
+        fill.setAlpha(70)
+        p.setBrush(fill)
+        p.drawRoundedRect(QRectF(0, 0, self.width(), self.height()), 14, 14)
+        p.setBrush(QColor(theme.ACCENT))
+        p.drawEllipse(QRectF(10, 11, 32, 32))
+        f = p.font()
+        f.setPointSizeF(10.5)
+        f.setBold(True)
+        p.setFont(f)
+        p.setPen(QColor("#ffffff"))
+        p.drawText(QRectF(10, 11, 32, 32), Qt.AlignCenter, (self._email[:1] or "?").upper())
+        f.setBold(False)
+        f.setPointSizeF(9.5)
+        p.setFont(f)
+        p.setPen(QColor(theme.FG))
+        fm = p.fontMetrics()
+        p.drawText(QRectF(52, 9, self.width() - 62, 18), Qt.AlignVCenter | Qt.AlignLeft, fm.elidedText(self._email or "Not signed in", Qt.ElideRight, self.width() - 62))
+        f.setPointSizeF(8.5)
+        p.setFont(f)
+        p.setPen(QColor(self._status[1] or theme.DIM))
+        p.drawText(QRectF(52, 27, self.width() - 62, 16), Qt.AlignVCenter | Qt.AlignLeft, "● " + (self._status[0] or ""))

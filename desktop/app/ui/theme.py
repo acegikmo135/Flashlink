@@ -65,7 +65,7 @@ QLabel#muted {{ color: {g['MUTED']}; }}
 QLabel#dim {{ color: {g['DIM']}; font-size: 12px; }}
 QLabel#mono, QPlainTextEdit#mono, QLabel#code {{ font-family: {MONO_FONT}; font-size: 12px; }}
 QLabel#code {{ font-size: 28px; letter-spacing: 6px; }}
-QLabel#brand {{ font-family: {DISPLAY_FONT}; font-weight: 700; font-size: 15px; }}
+QLabel#brand {{ font-family: {DISPLAY_FONT}; font-weight: 700; font-size: 16px; }}
 QFrame#card {{ background: {g['PANEL']}; border: none; border-radius: 16px; }}
 QFrame#hline {{ background: {g['LINE']}; max-height: 1px; min-height: 1px; border: none; }}
 QPushButton {{ background: {g['FILL']}; border: none; border-radius: 15px; padding: 6px 16px; min-height: 18px; color: {g['FG']}; font-weight: 500; }}
@@ -79,7 +79,7 @@ QPushButton#danger {{ background: {g['TINT_ERR']}; color: {g['ERR']}; font-weigh
 QPushButton#danger:hover {{ background: {g['TINT_ERR']}; }}
 QPushButton#link {{ background: transparent; padding: 2px 0; color: {g['ACCENT']}; text-align: left; font-weight: 500; }}
 QPushButton#link:hover {{ background: transparent; }}
-QPushButton#nav {{ background: transparent; border-radius: 12px; text-align: left; padding: 8px 12px 8px 46px; color: {g['FG']}; font-size: 14px; font-weight: 500; }}
+QPushButton#nav {{ background: transparent; border-radius: 12px; text-align: left; padding: 0 12px 0 52px; min-height: 44px; max-height: 44px; color: {g['FG']}; font-size: 14px; font-weight: 500; }}
 QPushButton#nav:hover {{ background: {g['FILL']}; }}
 QPushButton#nav[active="true"] {{ background: transparent; color: {g['ACCENT']}; font-weight: 600; }}
 QTableWidget {{ background: {g['PANEL']}; border: none; border-radius: 16px; gridline-color: {g['LINE']}; selection-background-color: {g['TINT']}; selection-color: {g['FG']}; }}
