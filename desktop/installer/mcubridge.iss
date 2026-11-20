@@ -35,7 +35,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "startup"; Description: "Start MCU Bridge when I sign in to Windows"; GroupDescription: "Options:"
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Options:"; Flags: unchecked
+Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Options:"
 
 [Files]
 Source: "..\dist\MCUBridge\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
