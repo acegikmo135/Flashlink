@@ -5,9 +5,9 @@ MCP tool for the live version.
 
 | Family | Boards | Tool | Programmer | Status |
 |---|---|---|---|---|
-| ESP32 / S2 / S3 / C3 | `esp32-wroom-32`, `esp32-wrover`, `esp32-generic`, `esp32-s2-saola-1`, `esp32-s3-devkitc-1`, `esp32-c3-devkitm-1`, `esp32-c3-supermini` | esptool (built in) | USB-UART bridge or native USB | Implemented. **Not yet run on real hardware.** |
+| ESP32 / S2 / S3 / C3 | `esp32-wroom-32`, `esp32-wrover`, `esp32-generic`, `esp32-s2-saola-1`, `esp32-s3-devkitc-1`, `esp32-c3-devkitm-1`, `esp32-c3-supermini` | esptool (built in) | USB-UART bridge or native USB | **`esp32-wroom-32` flashed and verified on real hardware (Windows).** Others implemented, not yet run on hardware. |
 | ESP8266 | `esp8266-nodemcu`, `esp8266-wemos-d1-mini`, `esp8266-generic` | esptool (built in) | USB-UART | Implemented. **Not yet run on real hardware.** |
-| AVR | `arduino-uno`, `arduino-nano`, `arduino-nano-old-bootloader`, `arduino-mega2560` | avrdude (**not bundled**) | Serial bootloader | Implemented. **Not yet run on real hardware.** |
+| AVR | `arduino-uno`, `arduino-nano`, `arduino-nano-old-bootloader`, `arduino-mega2560` | avrdude (**not bundled**, one-click download in the Tools page) | Serial bootloader | Implemented; hardened after a real-world failure report (explicit config, baud fallback, probe diagnostics). **Not yet confirmed on hardware.** The desktop app auto-detects the exact board (115200 → 57600 → Mega). |
 | STM32 | `stm32-bluepill-f103c8`, `stm32-blackpill-f411ce`, `stm32-nucleo-f103rb`, `stm32-nucleo-l476rg` | STM32CubeProgrammer CLI or OpenOCD (**not bundled**) | **ST-Link required** | Command construction unit-tested only. |
 | CH32V003 | `ch32v003f4p6` | `wlink` (**not bundled**) | **WCH-LinkE required** (RISC-V mode) | Command construction unit-tested only. |
 

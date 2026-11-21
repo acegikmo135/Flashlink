@@ -12,6 +12,7 @@
  *
  * Flags: --deploy-only (skip login/db/secrets creation when already set up)
  *        --rotate-secrets   --dry-run   --status
+ *        --domain <host>   serve the Worker on your own domain (zone must be on your Cloudflare account)
  * Your Cloudflare credentials are handled only by Wrangler's own OAuth flow.
  */
 import { spawnSync } from "node:child_process";
@@ -27,7 +28,13 @@ const CONFIG = join(STATE_DIR, "config.json");
 const TOML = join(CLOUD, "wrangler.toml");
 const DB_NAME = "mcu-bridge";
 const PLACEHOLDER_DB_ID = "00000000-0000-0000-0000-000000000000";
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
+const domainArg = (() => {
+  const i = argv.findIndex((a) => a === "--domain" || a.startsWith("--domain="));
+  if (i < 0) return null;
+  return argv[i].includes("=") ? argv[i].split("=")[1] : argv[i + 1] ?? null;
+})();
 const dry = args.has("--dry-run");
 const isWin = process.platform === "win32";
 
@@ -68,6 +75,16 @@ export function parseWorkerUrl(text) {
 }
 export function setDatabaseId(toml, id) {
   return toml.replace(/(database_id\s*=\s*")[^"]*(")/, `$1${id}$2`);
+}
+/** Adds (or replaces) a Workers custom-domain route right after `workers_dev = true`. */
+export function setCustomDomain(toml, host) {
+  const line = `routes = [{ pattern = "${host}", custom_domain = true }]`;
+  const without = toml.replace(/^routes\s*=.*\n/m, "");
+  return without.replace(/^(workers_dev\s*=.*\n)/m, `$1${line}\n`);
+}
+export function getCustomDomain(toml) {
+  const m = /^routes\s*=\s*\[\{\s*pattern\s*=\s*"([^"]+)"/m.exec(toml);
+  return m ? m[1] : null;
 }
 export function getDatabaseId(toml) {
   const m = /database_id\s*=\s*"([^"]*)"/.exec(toml);
@@ -113,16 +130,21 @@ async function main() {
     log("Preparing the D1 database");
     let toml = readFileSync(TOML, "utf8");
     let dbId = getDatabaseId(toml);
+    const list = wrangler(["d1", "list", "--json"], { capture: true, allowFail: true });
+    let known = [];
+    try {
+      known = JSON.parse(strip(list.stdout || "[]"));
+    } catch {
+      /* ignore */
+    }
+    const mine = known.find((d) => d.name === DB_NAME);
+    // A database id that does not exist in THIS account (e.g. the one in a cloned repo) is treated as missing.
+    if (dbId && dbId !== PLACEHOLDER_DB_ID && !known.some((d) => d.uuid === dbId) && !dry) dbId = null;
     if (!dbId || dbId === PLACEHOLDER_DB_ID) {
-      const created = wrangler(["d1", "create", DB_NAME, "--binding", "DB", "--update-config"], { capture: true, allowFail: true });
-      dbId = parseUuid(strip(created.stdout || ""));
+      dbId = mine?.uuid ?? null;
       if (!dbId) {
-        const list = wrangler(["d1", "list", "--json"], { capture: true, allowFail: true });
-        try {
-          dbId = JSON.parse(strip(list.stdout)).find((d) => d.name === DB_NAME)?.uuid ?? null;
-        } catch {
-          /* ignore */
-        }
+        const created = wrangler(["d1", "create", DB_NAME], { capture: true, allowFail: true });
+        dbId = parseUuid(strip(created.stdout || ""));
       }
       if (!dbId && !dry) die("Could not create or find the D1 database. Create it with `npx wrangler d1 create mcu-bridge` and put the id in cloud/wrangler.toml.");
       if (dbId) {
@@ -145,6 +167,15 @@ async function main() {
     cfg.d1_database_id = dbId;
   }
 
+  // 9b ── optional custom domain (kept in cloud/wrangler.toml so later deploys keep it)
+  const wantDomain = domainArg || cfg.custom_domain || null;
+  if (wantDomain && !dry) {
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(wantDomain)) die(`"${wantDomain}" is not a valid hostname.`);
+    writeFileSync(TOML, setCustomDomain(readFileSync(TOML, "utf8"), wantDomain));
+    cfg.custom_domain = wantDomain;
+    info(`custom domain: ${wantDomain}`);
+  }
+
   // 10 ── deploy
   log("Deploying the Worker");
   const dep = wrangler(["deploy"], { capture: true });
@@ -152,7 +183,7 @@ async function main() {
   // 11 ── worker URL
   let url = parseWorkerUrl(strip(dep.stdout || "") + strip(dep.stderr || ""));
   if (!url && !dry) die("Deployment succeeded but the workers.dev URL could not be read. Check the Cloudflare dashboard (Workers → mcu-bridge).");
-  cfg.worker_url = url ?? cfg.worker_url;
+  cfg.worker_url = cfg.custom_domain ? `https://${cfg.custom_domain}` : url ?? cfg.worker_url;
 
   if (cfg.secrets_pending_upload || args.has("--rotate-secrets")) {
     log("Uploading secrets to the Worker (via Wrangler)");

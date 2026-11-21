@@ -5,6 +5,8 @@ main = "src/index.ts"
 compatibility_date = "2025-09-01"
 workers_dev = true
 
+# Optional custom domain: `node scripts/setup.mjs --domain mcub.example.com` adds a `routes` entry here (the zone must be on your Cloudflare account).
+
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
@@ -12,6 +14,7 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [vars]
+# Fallback for /download/MCUBridge-Setup.exe until you publish an installer to the edge (scripts/publish-installer.mjs).
 INSTALLER_URL = "https://github.com/acegikmo135/Flashlink/releases/download/desktop-latest/MCUBridge-Setup.exe"
 
 [observability]
@@ -33,5 +36,5 @@ new_sqlite_classes = ["UserHub", "TransferRelay"]
 [[d1_databases]]
 binding = "DB"
 database_name = "mcu-bridge"
-database_id = "e6165d29-9710-444d-8ebb-a546f8434377"
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"

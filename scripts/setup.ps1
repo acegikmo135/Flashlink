@@ -3,9 +3,9 @@
  Installs project dependencies, logs you in to Cloudflare through Wrangler's
  browser OAuth, creates the D1 database, deploys the Worker and prints your
  invite code + Claude Code MCP command. Safe to re-run.
- Usage:  .\scripts\setup.ps1 [-DeployOnly] [-RotateSecrets] [-DryRun]
+ Usage:  .\scripts\setup.ps1 [-DeployOnly] [-RotateSecrets] [-DryRun] [-Domain mcub.example.com]
 #>
-param([switch]$DeployOnly, [switch]$RotateSecrets, [switch]$DryRun)
+param([switch]$DeployOnly, [switch]$RotateSecrets, [switch]$DryRun, [string]$Domain = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 
@@ -22,5 +22,6 @@ $flags = @()
 if ($DeployOnly)    { $flags += '--deploy-only' }
 if ($RotateSecrets) { $flags += '--rotate-secrets' }
 if ($DryRun)        { $flags += '--dry-run' }
+if ($Domain)        { $flags += @('--domain', $Domain) }
 & node (Join-Path $PSScriptRoot 'setup.mjs') @flags
 exit $LASTEXITCODE

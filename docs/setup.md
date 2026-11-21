@@ -17,6 +17,11 @@ with `wrangler secret bulk` → deploys → prints the Worker URL, invite code a
 
 Later code changes: `.\scripts\deploy.ps1`.
 
+**Custom domain.** If your domain's DNS is on the same Cloudflare account, pass it to the script and Cloudflare creates the DNS
+record and certificate: `.\scripts\setup.ps1 -Domain mcub.example.com` (or `node scripts/setup.mjs --domain mcub.example.com`).
+The script writes a `routes = [{ pattern = "...", custom_domain = true }]` line into `cloud/wrangler.toml` and remembers it for
+later runs; the `workers.dev` URL keeps working. Paired desktop apps keep using whatever server URL they were paired with.
+
 ## 2. Create your account and MCP token
 
 Open `<worker-url>/signup` → create an account with the invite code → on the dashboard press **Create token**. The token
