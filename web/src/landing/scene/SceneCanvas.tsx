@@ -34,7 +34,7 @@ function Rig() {
     const p = pose(S.t)
     const aspect = size.width / size.height
     S.portrait = aspect < 0.9
-    const k = S.portrait ? Math.min(2.4, 1.95 + (0.9 - aspect) * 0.9) : aspect < 1.4 ? 1 + (1.4 - aspect) * 0.5 : 1
+    const k = S.portrait ? 1 : aspect < 1.4 ? 1 + (1.4 - aspect) * 0.5 : 1
     const L = new THREE.Vector3(...p.look)
     const C = new THREE.Vector3(...p.cam).sub(L).multiplyScalar(k).add(L)
     const f = first.current ? 1 : 1 - Math.exp(-dt * (S.reduced ? 60 : 5.5))

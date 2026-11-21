@@ -54,7 +54,7 @@ function Pcb({ w, d, color, holes = [], rad = 1.6 }: { w: number; d: number; col
   }, [w, d, rad, holes])
   return (
     <mesh geometry={geo}>
-      <meshPhysicalMaterial color={color} roughness={0.42} metalness={0.05} clearcoat={0.35} clearcoatRoughness={0.4} />
+      <meshPhysicalMaterial color={color} roughness={0.62} metalness={0.02} clearcoat={0.12} clearcoatRoughness={0.5} envMapIntensity={0.55} />
     </mesh>
   )
 }
@@ -81,18 +81,28 @@ function Silk({ w, d, labels, extra }: { w: number; d: number; labels: Label[]; 
   )
 }
 
-function Tips({ pts, c = GOLD, h = 1.9, s = 0.46 }: { pts: [number, number][]; c?: string; h?: number; s?: number }) {
+function Tips({ pts, c = GOLD, h = 1.1, s = 0.5, y0 = 0, dome = true }: { pts: [number, number][]; c?: string; h?: number; s?: number; y0?: number; dome?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null)
+  const sol = useRef<THREE.InstancedMesh>(null)
   useLayoutEffect(() => {
     const m = new THREE.Matrix4()
-    pts.forEach(([x, z], i) => { m.setPosition(x, TOP + h / 2, z); ref.current!.setMatrixAt(i, m) })
-    ref.current!.instanceMatrix.needsUpdate = true
-  }, [pts, h])
+    pts.forEach(([x, z], i) => {
+      m.setPosition(x, TOP + y0 + h / 2, z); ref.current!.setMatrixAt(i, m)
+      m.setPosition(x, TOP + 0.15, z); sol.current!.setMatrixAt(i, m)
+    })
+    ref.current!.instanceMatrix.needsUpdate = true; sol.current!.instanceMatrix.needsUpdate = true
+  }, [pts, h, y0])
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, pts.length]}>
-      <boxGeometry args={[s, h, s]} />
-      <meshStandardMaterial color={c} metalness={1} roughness={0.18} envMapIntensity={1.6} />
-    </instancedMesh>
+    <>
+      <instancedMesh ref={ref} args={[undefined, undefined, pts.length]}>
+        <boxGeometry args={[s, h, s]} />
+        <meshStandardMaterial color={c} metalness={1} roughness={0.2} envMapIntensity={1.6} />
+      </instancedMesh>
+      <instancedMesh ref={sol} args={[undefined, undefined, pts.length]} visible={dome}>
+        <cylinderGeometry args={[0.68, 0.8, 0.28, 14]} />
+        <meshStandardMaterial color="#9aa1ac" metalness={1} roughness={0.4} />
+      </instancedMesh>
+    </>
   )
 }
 
@@ -188,10 +198,10 @@ function Smd({ pts, s = [1.6, 0.6, 0.8], c = "#8a7a5c", m = 0.3 }: { pts: [numbe
 const ESP_L = ["EN", "VP", "VN", "34", "35", "32", "33", "25", "26", "27", "14", "12", "13", "GND", "VIN"]
 const ESP_R = ["23", "22", "TX0", "RX0", "21", "19", "18", "5", "TX2", "RX2", "4", "2", "15", "GND", "3V3"]
 const espLabels: Label[] = [
-  ...ESP_L.map((t, i) => ({ x: 17.0 - i * 2.54 - 1.6, z: -8.7, t, size: 1.15, rot: -Math.PI / 2, align: "left" as const })),
-  ...ESP_R.map((t, i) => ({ x: 17.0 - i * 2.54 - 1.6, z: 8.7, t, size: 1.15, rot: -Math.PI / 2, align: "right" as const })),
+  ...ESP_L.map((t, i) => ({ x: 15.88 - i * 2.54, z: -9.5, t, size: 1.2, rot: Math.PI / 2, align: "left" as const })),
+  ...ESP_R.map((t, i) => ({ x: 15.88 - i * 2.54, z: 9.5, t, size: 1.2, rot: -Math.PI / 2, align: "left" as const })),
   { x: -21.6, z: -5.6, t: "BOOT", size: 1.2 }, { x: -21.6, z: 5.6, t: "EN", size: 1.2 },
-  { x: -11, z: 0, t: "ESP32 DEVKIT", size: 1.5, col: "rgba(236,238,242,0.55)" },
+  { x: -4.2, z: 0.2, t: "DEVKIT V1", size: 1.3, col: "rgba(236,238,242,0.5)" },
 ]
 
 export function Esp32Board({ live = true }: { live?: boolean }) {
@@ -251,9 +261,9 @@ export function Esp32Board({ live = true }: { live?: boolean }) {
       <Bx p={[-9.2, 6.6]} s={[3.2, 0.3, 3.4]} c="#b9bec7" m={1} r={0.3} />
       <Bx p={[-21.2, -9.3]} s={[6, 0.4, 3.6]} c="#c3c7ce" m={1} r={0.3} /><Cyl p={[-21.2, -9.3]} r={1.2} h={1.6} yb={0.4} c="#101114" />
       <Bx p={[-21.2, 9.3]} s={[6, 0.4, 3.6]} c="#c3c7ce" m={1} r={0.3} /><Cyl p={[-21.2, 9.3]} r={1.2} h={1.6} yb={0.4} c="#101114" />
-      <Smd pts={[[-18.6, -3.7], [-18.6, 3.2], [-14.2, 4.6], [-12.4, -4.6], [-8.2, -2.4], [-5.2, 1.5], [-9.4, 2.4], [-3.6, -1.6, 0.0], [-2.4, 1.8], [-16.6, 5.4], [-7.4, -6.7]]} />
+      <Smd pts={[[-18.6, -3.7], [-18.6, 3.2], [-14.2, 4.6], [-12.4, -4.6], [-8.2, -2.4], [-9.4, 2.4], [-16.6, 5.4], [-7.4, -6.7]]} />
       <Smd pts={[[-4.6, 7], [-1.4, -7.2], [-17.6, -7], [-10.8, -7.4]]} s={[1.0, 0.5, 0.5]} c="#0c0c0e" m={0} />
-      <Led p={[-9, -6.2]} off="#4a1612" on="#ff4b3a" drive={() => 0.12} />
+      <Led p={[-9, -6.2]} off="#3a0f0c" on="#e0301f" drive={() => 0.05} />
       <Led p={[-6, 5.6]} drive={() => FX.led} lit />
       {live && (
         <>
@@ -279,12 +289,13 @@ export function UnoBoard() {
   const holes = useMemo<[number, number][]>(() => [[-20.3, -24.15], [-19, 24.05], [31.8, -19.05], [31.8, 8.85]], [])
   return (
     <group scale={0.1}>
-      <Pcb w={68.6} d={53.3} color="#082432" holes={holes} />
+      <Pcb w={68.6} d={53.3} color="#053a4a" holes={holes} />
       <Silk w={68.6} d={53.3} labels={unoLabels} />
       <mesh position={[-32.3, TOP + 5.7, -12]}><boxGeometry args={[16, 11.4, 12]} /><meshStandardMaterial color="#c8ccd3" metalness={1} roughness={0.3} /></mesh>
       <Bx p={[-31.3, 16]} s={[14, 11, 9]} c="#0a0a0b" r={0.6} />
       <Bx p={[6, 10]} s={[35, 3.4, 7.6]} c="#0a0a0b" r={0.4} />
       <Cyl p={[-8, 10]} r={0.8} h={0.1} yb={3.4} c="#232428" />
+      <Bx p={[6, 6.3]} s={[33, 0.5, 0.6]} c="#c3c7ce" m={1} r={0.3} /><Bx p={[6, 13.7]} s={[33, 0.5, 0.6]} c="#c3c7ce" m={1} r={0.3} />
       <Bx p={[-14, -9]} s={[11, 3.6, 4.5]} c="#c9cdd4" m={1} r={0.3} />
       <Bx p={[-23, -3]} s={[5, 0.9, 5]} c="#0a0a0b" r={0.4} />
       <Cyl p={[-22.5, 18]} r={3.2} h={5.5} c="#9aa0aa" m={1} rough={0.35} /><Cyl p={[-14.5, 18.4]} r={3.2} h={5.5} c="#9aa0aa" m={1} rough={0.35} />
@@ -292,10 +303,10 @@ export function UnoBoard() {
       <Bx p={[-4, 22]} s={[6.5, 2, 3.5]} c="#0a0a0b" />
       {[[18.2, 10], [-6.4, 8], [2.25, 8], [22.6, 6]].map(([cx, n], i) => {
         const z = i < 2 ? -24.1 : 24.1
-        return <group key={i}><Bx p={[cx, z]} s={[n * 2.54, 8.5, 2.54]} c="#0a0a0b" r={0.7} /><Tips pts={row(n, z, cx).map(([x, zz]) => [x, zz])} h={0.2} s={1.5} c="#000" /></group>
+        return <group key={i}><Bx p={[cx, z]} s={[n * 2.54, 8.5, 2.54]} c="#141518" r={0.6} /><Tips pts={row(n, z, cx).map(([x, zz]) => [x, zz])} h={0.15} y0={8.5} s={1.5} c="#010102" dome={false} /></group>
       })}
       <Bx p={[30, 0]} s={[7.6, 2.5, 5.1]} c="#0a0a0b" />
-      <Tips pts={[...row(3, -1.27, 30).map(([x, z]) => [x, z] as [number, number]), ...row(3, 1.27, 30)]} h={4} />
+      <Tips pts={[...row(3, -1.27, 30).map(([x, z]) => [x, z] as [number, number]), ...row(3, 1.27, 30)]} h={2.4} />
       <Led p={[-4, -8]} off="#173b2a" on="#53ff9a" drive={() => 0} /><Led p={[-4, -5]} off="#4a1612" on="#ff4b3a" drive={() => 0.1} />
     </group>
   )
@@ -306,10 +317,10 @@ export function NanoBoard() {
   const labels = useMemo<Label[]>(() => [{ x: 7, z: -3.1, t: "NANO", size: 2.4 }, { x: 7, z: 3.5, t: "V3.0", size: 1.2, col: "rgba(236,238,242,0.5)" }], [])
   return (
     <group scale={0.1}>
-      <Pcb w={45} d={18} color="#081c3d" rad={1.2} />
+      <Pcb w={45} d={18} color="#071a3a" rad={1.2} />
       <Silk w={45} d={18} labels={labels} />
       <Tips pts={[...row(15, -7.62, 1.2), ...row(15, 7.62, 1.2)]} />
-      <Tips pts={[...row(3, -1.27, 19.9).map(([x, z]) => [x, z] as [number, number]), ...row(3, 1.27, 19.9)]} h={1.6} s={0.6} />
+      <Tips pts={[...row(3, -1.27, 17.8).map(([x, z]) => [x, z] as [number, number]), ...row(3, 1.27, 17.8)]} h={1.1} s={0.5} />
       <mesh position={[-19.2, TOP + 2, 0]}><boxGeometry args={[8, 4, 7.6]} /><meshStandardMaterial color="#cfd3da" metalness={1} roughness={0.3} /></mesh>
       <Bx p={[6.5, 0]} s={[7, 1, 7]} c="#0a0a0b" r={0.4} /><Bx p={[-6.5, 0]} s={[10, 1.5, 4]} c="#0a0a0b" r={0.4} />
       <Bx p={[-1.5, 5.4]} s={[3.2, 0.9, 2.5]} c="#b9bec7" m={1} r={0.3} />
@@ -322,20 +333,20 @@ export function NanoBoard() {
 
 /* ============================ STM32 Blue Pill ============================ */
 export function BluePillBoard() {
-  const labels = useMemo<Label[]>(() => [{ x: 4, z: -4.8, t: "STM32F103C8T6", size: 1.4, col: "rgba(236,238,242,0.55)" }, { x: 4, z: 5.4, t: "BLUE PILL", size: 1.8 }], [])
+  const labels = useMemo<Label[]>(() => [{ x: 4, z: -6.2, t: "STM32F103C8T6", size: 1.3, col: "rgba(236,238,242,0.5)" }, { x: 4, z: 5.4, t: "BLUE PILL", size: 1.8 }], [])
   return (
     <group scale={0.1}>
-      <Pcb w={53} d={22.8} color="#0b2260" rad={1.4} />
+      <Pcb w={53} d={22.8} color="#0a1f5c" rad={1.4} />
       <Silk w={53} d={22.8} labels={labels} />
       <Tips pts={[...row(20, -10.16), ...row(20, 10.16)]} />
-      <Tips pts={row(4, 0, 24.6).map(([x, z]) => [x, z] as [number, number])} />
+      <Tips pts={[-3.81, -1.27, 1.27, 3.81].map((z) => [24.2, z] as [number, number])} />
       <mesh position={[-24.3, TOP + 1.3, 0]}><boxGeometry args={[5.6, 2.6, 7.5]} /><meshStandardMaterial color="#d3d7de" metalness={1} roughness={0.25} /></mesh>
       <Bx p={[3.5, 0]} s={[7, 1.4, 7]} c="#0a0a0b" r={0.4} />
       <Bx p={[-9, -1]} s={[4.9, 1.8, 3.6]} c="#c3c7ce" m={1} r={0.3} />
       <Cyl p={[-4.8, 5.8]} r={0.8} h={3} c="#c3c7ce" m={1} rough={0.3} />
       <Bx p={[-17.5, 7.4]} s={[3.4, 1.8, 3.4]} c="#b4b8c0" m={1} r={0.3} />
-      <Bx p={[13.5, 0]} s={[6.2, 6, 2.6]} yb={0} c="#0a0a0b" />
-      <Bx p={[13.5, -1.27]} s={[1.9, 5.8, 2]} yb={0} c="#9a8330" r={0.6} /><Bx p={[16.0, -1.27]} s={[1.9, 5.8, 2]} yb={0} c="#9a8330" r={0.6} />
+      <Bx p={[13.5, 0]} s={[6.2, 2.5, 2.6]} yb={0} c="#0a0a0b" />
+      <Bx p={[12.2, 0]} s={[2.1, 3.2, 2.4]} yb={0} c="#9a8330" r={0.6} /><Bx p={[14.8, 0]} s={[2.1, 3.2, 2.4]} yb={0} c="#9a8330" r={0.6} />
       <Led p={[-11, -7.8]} off="#4a1612" on="#ff4b3a" drive={() => 0.1} /><Led p={[-3, 8.8]} off="#173b2a" on="#53ff9a" drive={() => 0} />
       <Smd pts={[[-13, 2], [-7, 4.6], [-1.2, -5.2], [9.6, 5.2], [10.8, -6.6]]} s={[1.4, 0.5, 0.7]} />
     </group>

@@ -39,7 +39,9 @@ export default function LandingPage() {
     const el = document.documentElement
     const bg = el.style.backgroundColor
     el.style.backgroundColor = "#07090d"
-    return () => { document.title = prev; el.style.backgroundColor = bg }
+    const bb = document.body.style.background
+    document.body.style.background = "transparent"
+    return () => { document.title = prev; el.style.backgroundColor = bg; document.body.style.background = bb }
   }, [])
 
   /* hero headline entrance + final headline + product reveals (GSAP) */
@@ -149,6 +151,7 @@ export default function LandingPage() {
           <SceneCanvas onReady={() => setReady(true)} />
         </Suspense>
       )}
+      <div className="scrim" aria-hidden="true" />
       <Nav />
       <main className="main">
         <Hero />

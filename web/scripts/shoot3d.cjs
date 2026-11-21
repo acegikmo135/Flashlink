@@ -17,8 +17,8 @@ const server = http.createServer((req, res) => {
   await new Promise((r) => server.listen(0, r))
   const base = `http://127.0.0.1:${server.address().port}`
   const b = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] })
-  const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: dpr, reducedMotion: process.env.RM ? "reduce" : "no-preference", userAgent: process.env.MOBILE ? "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" : undefined })
-  const page = await ctx.newPage(); const errs = []
+  const ctx0 = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: dpr, reducedMotion: process.env.RM ? "reduce" : "no-preference", userAgent: process.env.MOBILE ? "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148" : undefined })
+  const page = await ctx0.newPage(); const errs = []
   page.on("console", (m) => m.type() === "error" && errs.push(m.text()))
   page.on("pageerror", (e) => errs.push("PAGEERR " + e.message))
   await page.goto(base + "/", { waitUntil: "networkidle" })

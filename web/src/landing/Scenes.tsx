@@ -51,7 +51,7 @@ export function Story() {
   return (
     <section id="story" className="scene" data-scene="1">
       <div className="pin story">
-        <h2 className="kicker">From a single instruction<br />to a physical result.</h2>
+        <header className="head"><span className="eyebrow mono">How it works</span><h2 className="h2">From a single instruction<br />to a physical result.</h2></header>
         <div className="where mono">
           {BEATS.map((b, i) => <span key={i} data-win={b.w.join(",")} data-scene="1" data-where>{b.where}</span>)}
         </div>
@@ -73,7 +73,8 @@ export function Product() {
   return (
     <section id="product" className="scene product" data-scene="2">
       <div className="prod-head">
-        <h2 className="big">Everything connected.<br /><em>One conversation.</em></h2>
+        <span className="eyebrow mono">The product</span>
+        <h2 className="h2 wide">Everything connected.<br /><em>One conversation.</em></h2>
       </div>
       <div className="prod-stage">
         <figure className="fig f1" data-reveal="x">
@@ -105,7 +106,7 @@ export function Hardware({ goStop }: { goStop: (i: number) => void }) {
   return (
     <section id="hardware" className="scene" data-scene="3">
       <div className="pin hw">
-        <h2 className="kicker">Made for the hardware<br />you already own.</h2>
+        <header className="head"><span className="eyebrow mono">Hardware</span><h2 className="h2">Made for the hardware<br />you already own.</h2></header>
         <nav className="hw-nav" aria-label="Boards">
           {BOARDS.map((x, n) => (
             <button key={x.name} className="hw-btn" aria-current={n === i} onClick={() => goStop(n)}>
@@ -117,7 +118,7 @@ export function Hardware({ goStop }: { goStop: (i: number) => void }) {
         <div className="hw-info">
           <AnimatePresence mode="wait">
             <motion.div key={b.name} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.45, ease }}>
-              <div className="big name">{b.name}</div>
+              <div className="name">{b.name}</div>
               <div className="mono sub">{b.sub}</div>
               <div className={`tier t${b.tier}`}><i />{TIER[b.tier]}</div>
               <p className="note">{b.note}</p>
@@ -143,16 +144,16 @@ export function Proof() {
   return (
     <section id="proof" className="scene" data-scene="4">
       <div className="pin proof">
-        <h2 className="kicker">A flash isn’t finished<br />until it’s verified.</h2>
+        <header className="head"><span className="eyebrow mono">Verification</span><h2 className="h2">A flash isn’t finished<br />until it’s verified.</h2></header>
         <div className="phases">
           {PHASES.map((p, i) => (
             <div className="phase" key={i} data-at={p.w[0]} data-scene="4">
-              <span className="big">{p.h}</span>
+              <span className="st">{p.h}</span>
               <span className="mono cap">{p.c}</span>
             </div>
           ))}
           <div className="phase confirmed" data-at="0.93" data-scene="4">
-            <span className="big">Confirmed.</span>
+            <span className="st">Confirmed.</span>
             <span className="mono cap">flash_confirmed: true</span>
           </div>
         </div>
