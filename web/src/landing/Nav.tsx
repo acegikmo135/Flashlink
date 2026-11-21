@@ -1,13 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { useEffect, useState } from "react"
-import { REPO } from "./data"
+import { DOCS, README_START, REPO } from "./data"
 import { Button, Mark, ease } from "./ui"
 
 const LINKS = [
-  { href: "#product", label: "Product" },
-  { href: "#architecture", label: "Architecture" },
+  { href: "#story", label: "Experience" },
   { href: "#hardware", label: "Hardware" },
-  { href: "https://github.com/acegikmo135/Flashlink/blob/main/docs/setup.md", label: "Docs", ext: true },
+  { href: DOCS, label: "Docs", ext: true },
   { href: REPO, label: "GitHub", ext: true },
 ]
 
@@ -43,7 +42,7 @@ export function Nav() {
             </ul>
           </nav>
           <div className="nav-right">
-            <Button small primary href="#start">Get started</Button>
+            <Button small primary href={README_START} target="_blank" rel="noreferrer">Get started</Button>
             <button className="menu-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               <span />
             </button>
@@ -53,7 +52,7 @@ export function Nav() {
       <AnimatePresence>
         {open && (
           <motion.div className="sheet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease }}>
-            {[...LINKS, { href: "#start", label: "Get started" }].map((l, i) => (
+            {[...LINKS, { href: README_START, label: "Get started", ext: true }].map((l, i) => (
               <motion.a
                 key={l.label} className="row" href={l.href}
                 {...("ext" in l && l.ext ? { target: "_blank", rel: "noreferrer" } : {})}
