@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { Shell } from "@/components/shell"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,6 +11,8 @@ import { AuthorizePage, PairPage } from "@/pages/consent"
 import { DevicesPage } from "@/pages/devices"
 import { OverviewPage } from "@/pages/overview"
 
+const LandingPage = lazy(() => import("@/landing/LandingPage"))
+
 function Protected({ children }: { children: React.ReactNode }) {
   const { session } = useSession()
   const loc = useLocation()
@@ -18,16 +21,26 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function Landing() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#08090a" }} />}>
+      <LandingPage />
+    </Suspense>
+  )
+}
+
 function Home() {
   const { session } = useSession()
   if (!session) return null
-  return <Navigate to={session.user ? "/dashboard" : "/login"} replace />
+  if (session.user) return <Navigate to="/dashboard" replace />
+  return <Landing />
 }
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/home" element={<Landing />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/signup" element={<AuthPage mode="signup" />} />
       <Route path="/pair" element={<PairPage />} />
