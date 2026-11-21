@@ -6,6 +6,7 @@ export const S = {
   q: [0, 0, 0, 0, 0, 0] as number[], // per-scene pinned progress (0..1)
   portrait: false,
   reduced: false,
+  intro: 0, // 0→1 hero camera dolly-in after first frame
 }
 
 /** Animated channels drawn by the boards. Computed in channels(). */

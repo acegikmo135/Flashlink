@@ -1,7 +1,6 @@
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
-import "@fontsource/instrument-serif/400.css"
-import "@fontsource/instrument-serif/400-italic.css"
+import "@fontsource-variable/geist-pixel"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -31,6 +30,12 @@ export default function LandingPage() {
     return reduced || !webglOk() ? "static" : "gl"
   })
   const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (!ready) return
+    if (S.reduced) { S.intro = 1; return }
+    const tw = gsap.to(S, { intro: 1, duration: 2.8, ease: "power3.out" })
+    return () => { tw.kill() }
+  }, [ready])
   const offsets = useRef<{ top: number; h: number }[]>([])
 
   useEffect(() => {
@@ -49,8 +54,16 @@ export default function LandingPage() {
     const r = root.current!
     const ctx = gsap.context(() => {
       if (!S.reduced) {
-        gsap.from("#s0 .w", { yPercent: 115, duration: 1.25, ease: "power4.out", stagger: 0.07, delay: 0.2 })
-        gsap.from("#s0 .hero-sub, #s0 [data-fade]", { opacity: 0, y: 14, duration: 1, ease: "power3.out", delay: 1.0, stagger: 0.1 })
+        // Hero entrance is pure CSS (compositor-driven, immune to main-thread jank while WebGL boots).
+        // Hero EXIT: scrubbed, clearly visible — lines lift out of their masks in sequence, then sub + CTAs.
+        const end = () => "+=" + Math.round(window.innerHeight * 0.62)
+        gsap.timeline({ scrollTrigger: { trigger: "#s0", start: "top top", end, scrub: 0.5 } })
+          .to("#s0 .ln", { yPercent: -70, opacity: 0, stagger: 0.14, ease: "power1.in" }, 0)
+          .to("#s0 .hero-sub", { y: -46, opacity: 0, ease: "power1.in" }, 0.12)
+          .to("#s0 .cta-row", { y: -56, opacity: 0, ease: "power1.in" }, 0.2)
+          .to("#s0 .hero-tag, #s0 .hero-scroll", { opacity: 0, ease: "none" }, 0)
+        // Story arrives with the scroll: heading + first line rise in as the scene enters the viewport.
+        gsap.from("#story .head", { y: 36, opacity: 0, duration: 1, ease: "power3.out", scrollTrigger: { trigger: "#story", start: "top 85%", once: true } })
         gsap.from("#final .w", { yPercent: 115, duration: 1.1, ease: "power4.out", stagger: 0.06, scrollTrigger: { trigger: "#final", start: "top 55%", once: true } })
         gsap.from("#final [data-final-fade]", { opacity: 0, y: 16, duration: 0.9, ease: "power3.out", stagger: 0.12, scrollTrigger: { trigger: "#final", start: "top 45%", once: true } })
         gsap.from("#product .big", { opacity: 0, y: 40, duration: 1.1, ease: "power3.out", scrollTrigger: { trigger: "#product", start: "top 70%", once: true } })

@@ -9,10 +9,10 @@ const subs = new Set<() => void>()
 export const setStop = (i: number) => { if (i !== stop) { stop = i; subs.forEach((f) => f()) } }
 const useStop = () => useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f) } }, () => stop)
 
-const Words = ({ text }: { text: string }) => (
+const Words = ({ text, start = 0 }: { text: string; start?: number }) => (
   <>
     {text.split(" ").map((w, i) => (
-      <span key={i}><span className="wi"><span className="w">{w}</span></span>{" "}</span>
+      <span key={i}><span className="wi"><span className="w" style={{ "--i": start + i } as React.CSSProperties}>{w}</span></span>{" "}</span>
     ))}
   </>
 )
@@ -22,10 +22,10 @@ export function Hero() {
   return (
     <section id="s0" className="scene" data-scene="0">
       <div className="pin hero">
-        <div className="hero-copy" data-ink data-win="-1,0.42" data-scene="0">
+        <div className="hero-copy" data-ink>
           <h1 aria-label="Give intelligence a physical connection.">
-            <span className="ln" aria-hidden="true"><Words text="Give intelligence" /></span>
-            <span className="ln" aria-hidden="true"><Words text="a" /><span className="wi"><span className="w"><em>physical</em></span></span>{" "}<Words text="connection." /></span>
+            <span className="ln" aria-hidden="true"><Words text="Give intelligence" start={0} /></span>
+            <span className="ln" aria-hidden="true"><Words text="a" start={2} /><span className="wi"><span className="w" style={{ "--i": 3 } as React.CSSProperties}><em>physical</em></span></span>{" "}<Words text="connection." start={4} /></span>
           </h1>
           <p className="hero-sub">An MCP-powered bridge between your AI coding agent and the hardware on your desk.</p>
           <div className="cta-row">
@@ -33,7 +33,7 @@ export function Hero() {
             <Button href="#story" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.6 }}>Explore Flashlink</Button>
           </div>
         </div>
-        <div className="hero-tag mono" data-ink data-fade data-win="-1,0.3" data-scene="0">ESP32-WROOM-32<br /><span>development board</span></div>
+        <div className="hero-tag mono" data-ink data-fade>ESP32-WROOM-32<br /><span>development board</span></div>
         <div className="hero-scroll mono" data-ink data-fade>Scroll</div>
       </div>
     </section>
@@ -42,7 +42,7 @@ export function Hero() {
 
 /* ---------------- 02 · the moment it becomes real ---------------- */
 const BEATS = [
-  { w: [0, 0.2], h: "An instruction.", c: "Your AI agent asks for a flash.", where: "Your AI" },
+  { w: [-1, 0.2], h: "An instruction.", c: "Your AI agent asks for a flash.", where: "Your AI" },
   { w: [0.2, 0.42], h: "Built in the cloud.", c: "The sketch compiles remotely. Your PC never has to.", where: "Cloud" },
   { w: [0.42, 0.66], h: "Received by your PC.", c: "The Flashlink app on Windows picks the firmware up.", where: "Your PC" },
   { w: [0.66, 1.02], h: "Written over USB.", c: "Not by the cloud. By the app, with the right tool for the chip.", where: "USB" },

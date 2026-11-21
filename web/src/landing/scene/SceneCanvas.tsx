@@ -20,7 +20,11 @@ function Env() {
 
 function Ink() {
   const gl = useThree((st) => st.gl)
-  useEffect(() => startInk(gl.domElement), [gl])
+  useEffect(() => {
+    let off: (() => void) | undefined
+    const t = window.setTimeout(() => { off = startInk(gl.domElement) }, 3200) // keep the hero intro jank-free
+    return () => { window.clearTimeout(t); off?.() }
+  }, [gl])
   return null
 }
 
@@ -43,7 +47,8 @@ function Rig() {
     S.portrait = aspect < 0.9
     const k = S.portrait ? 1 : aspect < 1.4 ? 1 + (1.4 - aspect) * 0.5 : 1
     const L = new THREE.Vector3(...p.look)
-    const C = new THREE.Vector3(...p.cam).sub(L).multiplyScalar(k).add(L)
+    const introK = 1 + (1 - S.intro) * 0.55 * (1 - Math.min(1, S.t))
+    const C = new THREE.Vector3(...p.cam).sub(L).multiplyScalar(k * introK).add(L)
     const f = first.current ? 1 : 1 - Math.exp(-dt * (S.reduced ? 60 : 5.5))
     first.current = false
     cam.current.lerp(C, f); look.current.lerp(L, f)
