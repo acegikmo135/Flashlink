@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import { BluePillBoard, Esp32Board, NanoBoard, UnoBoard } from "./boards"
+import { startInk } from "./ink"
 import { FX, ROW_Y, S, STOPS, channels, pose } from "./store"
 
 function Env() {
@@ -14,6 +15,12 @@ function Env() {
     scene.environmentIntensity = 0.6
     return () => { scene.environment = null; tex.dispose(); pm.dispose() }
   }, [gl, scene])
+  return null
+}
+
+function Ink() {
+  const gl = useThree((st) => st.gl)
+  useEffect(() => startInk(gl.domElement), [gl])
   return null
 }
 
@@ -70,6 +77,7 @@ export default function SceneCanvas({ onReady }: { onReady: () => void }) {
       frameloop={S.reduced ? "demand" : "always"}
     >
       <Env />
+      <Ink />
       <Rig />
       <ambientLight intensity={0.12} />
       <directionalLight position={[3, 6, 4]} intensity={1.9} color="#f4f6fb" />

@@ -46,8 +46,7 @@ const KEYS: Key[] = [
   { t: 4.08, cam: [-3.5, 2.1, 3.2], look: [-2.0, 0, 0.3], sx: 0.12, sy: 0 },
   { t: 4.5, cam: [-0.8, 2.9, 2.7], look: [-0.5, 0, 0], sx: 0.12, sy: 0 },
   { t: 4.85, cam: [1.8, 2.4, 2.6], look: [-0.1, 0, -0.1], sx: 0.12, sy: 0 },
-  { t: 5.0, cam: [2.4, 2.2, 3.4], look: [0.4, 0, 0], sx: 0.12, sy: 0 },
-  { t: 5.7, cam: [-0.2, 2.1, 5.2], look: [-1.0, 0, 0.1], sx: 0.3, sy: -0.15 },
+  { t: 5.0, cam: [-0.2, 2.1, 5.2], look: [-1.0, 0, 0.1], sx: 0.3, sy: -0.15 },
   { t: 6, cam: [-0.2, 2.1, 5.2], look: [-1.0, 0, 0.1], sx: 0.3, sy: -0.15 },
 ]
 // Portrait phones: the board is rolled to run top→bottom, text sits above, image is pushed down.
@@ -75,7 +74,7 @@ const PK: [number, number, number, number][] = [
 ]
 const P_HW = [18, 26, 17, 20]
 const PK2: [number, number, number, number][] = [
-  [4.0, -1.5, 18, 0], [4.12, -2.4, 14, 0], [4.4, -1.4, 15, 0], [4.7, 0.4, 16, 0], [4.9, -0.6, 13, 0.5], [5.0, -0.6, 14, 0.3], [5.7, -0.9, 22, 0], [6, -0.9, 22, 0],
+  [4.0, -1.5, 18, 0], [4.12, -2.4, 14, 0], [4.4, -1.4, 15, 0], [4.7, 0.4, 16, 0], [4.85, -0.6, 13, 0.5], [5.0, -0.9, 22, 0], [6, -0.9, 22, 0],
 ]
 const PN = new THREE.Vector3(-0.28, 0.84, 0.46).normalize()
 function portraitPose(t: number) {

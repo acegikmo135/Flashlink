@@ -22,7 +22,7 @@ export function Hero() {
   return (
     <section id="s0" className="scene" data-scene="0">
       <div className="pin hero">
-        <div className="hero-copy" data-win="-1,0.42" data-scene="0">
+        <div className="hero-copy" data-ink data-win="-1,0.42" data-scene="0">
           <h1 aria-label="Give intelligence a physical connection.">
             <span className="ln" aria-hidden="true"><Words text="Give intelligence" /></span>
             <span className="ln" aria-hidden="true"><Words text="a" /><span className="wi"><span className="w"><em>physical</em></span></span>{" "}<Words text="connection." /></span>
@@ -33,8 +33,8 @@ export function Hero() {
             <Button href="#story" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.6 }}>Explore Flashlink</Button>
           </div>
         </div>
-        <div className="hero-tag mono" data-fade data-win="-1,0.3" data-scene="0">ESP32-WROOM-32<br /><span>development board</span></div>
-        <div className="hero-scroll mono" data-fade>Scroll</div>
+        <div className="hero-tag mono" data-ink data-fade data-win="-1,0.3" data-scene="0">ESP32-WROOM-32<br /><span>development board</span></div>
+        <div className="hero-scroll mono" data-ink data-fade>Scroll</div>
       </div>
     </section>
   )
@@ -51,13 +51,13 @@ export function Story() {
   return (
     <section id="story" className="scene" data-scene="1">
       <div className="pin story">
-        <header className="head"><span className="eyebrow mono">How it works</span><h2 className="h2">From a single instruction<br />to a physical result.</h2></header>
-        <div className="where mono">
+        <header className="head" data-ink><span className="eyebrow mono">How it works</span><h2 className="h2">From a single instruction<br />to a physical result.</h2></header>
+        <div className="where mono" data-ink>
           {BEATS.map((b, i) => <span key={i} data-win={b.w.join(",")} data-scene="1" data-where>{b.where}</span>)}
         </div>
         <div className="beats">
           {BEATS.map((b, i) => (
-            <div className="beat" key={i} data-win={b.w.join(",")} data-scene="1">
+            <div className="beat" data-ink key={i} data-win={b.w.join(",")} data-scene="1">
               <div className="beat-h">{b.h}</div>
               <p className="beat-c">{b.c}</p>
             </div>
@@ -106,8 +106,8 @@ export function Hardware({ goStop }: { goStop: (i: number) => void }) {
   return (
     <section id="hardware" className="scene" data-scene="3">
       <div className="pin hw">
-        <header className="head"><span className="eyebrow mono">Hardware</span><h2 className="h2">Made for the hardware<br />you already own.</h2></header>
-        <nav className="hw-nav" aria-label="Boards">
+        <header className="head" data-ink><span className="eyebrow mono">Hardware</span><h2 className="h2">Made for the hardware<br />you already own.</h2></header>
+        <nav className="hw-nav" aria-label="Boards" data-ink>
           {BOARDS.map((x, n) => (
             <button key={x.name} className="hw-btn" aria-current={n === i} onClick={() => goStop(n)}>
               {x.name}
@@ -117,14 +117,14 @@ export function Hardware({ goStop }: { goStop: (i: number) => void }) {
         </nav>
         <div className="hw-info">
           <AnimatePresence mode="wait">
-            <motion.div key={b.name} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.45, ease }}>
+            <motion.div data-ink key={b.name} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.45, ease }}>
               <div className="name">{b.name}</div>
               <div className="mono sub">{b.sub}</div>
               <div className={`tier t${b.tier}`}><i />{TIER[b.tier]}</div>
               <p className="note">{b.note}</p>
             </motion.div>
           </AnimatePresence>
-          <p className="also mono">
+          <p className="also mono" data-ink>
             Also supported: ESP32-S2, S3 and C3, ESP8266 and Arduino Mega (implemented, awaiting validation), and CH32V003 (unit-tested only). <a href={DOCS_BOARDS} target="_blank" rel="noreferrer">Full list</a>
           </p>
         </div>
@@ -144,20 +144,20 @@ export function Proof() {
   return (
     <section id="proof" className="scene" data-scene="4">
       <div className="pin proof">
-        <header className="head"><span className="eyebrow mono">Verification</span><h2 className="h2">A flash isn’t finished<br />until it’s verified.</h2></header>
+        <header className="head" data-ink><span className="eyebrow mono">Verification</span><h2 className="h2">A flash isn’t finished<br />until it’s verified.</h2></header>
         <div className="phases">
           {PHASES.map((p, i) => (
-            <div className="phase" key={i} data-at={p.w[0]} data-scene="4">
+            <div className="phase" data-ink key={i} data-at={p.w[0]} data-scene="4">
               <span className="st">{p.h}</span>
               <span className="mono cap">{p.c}</span>
             </div>
           ))}
-          <div className="phase confirmed" data-at="0.93" data-scene="4">
+          <div className="phase confirmed" data-ink data-at="0.93" data-scene="4">
             <span className="st">Confirmed.</span>
             <span className="mono cap">flash_confirmed: true</span>
           </div>
         </div>
-        <div className="hash mono" aria-hidden="true" data-at="0.5" data-scene="4" data-show>
+        <div className="hash mono" data-ink aria-hidden="true" data-at="0.5" data-scene="4" data-show>
           <div><b>sent</b> <span data-hash="sent" data-from="0.5" data-to="0.7">{HASH_SENT}</span></div>
           <div><b>read</b> <span data-hash="read" data-from="0.76" data-to="0.9">{HASH_SENT}</span></div>
           <small>sample digest, for illustration</small>
@@ -172,7 +172,7 @@ export function Final() {
   return (
     <section id="final" className="scene" data-scene="5">
       <div className="pin final">
-        <div className="final-copy">
+        <div className="final-copy" data-ink>
           <h2 className="huge" data-final>
             <span className="ln"><Words text="Make your AI" /></span>
             <span className="ln"><span className="wi"><span className="w"><em>touch</em></span></span>{" "}<Words text="hardware." /></span>
@@ -183,7 +183,7 @@ export function Final() {
             <Button href={REPO} target="_blank" rel="noreferrer">View on GitHub</Button>
           </div>
         </div>
-        <footer className="foot mono">
+        <footer className="foot mono" data-ink>
           <span>Flashlink · MIT licensed</span>
           <nav aria-label="Footer">
             <a href={DOCS} target="_blank" rel="noreferrer">Docs</a>

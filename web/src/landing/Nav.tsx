@@ -27,7 +27,7 @@ export function Nav() {
 
   return (
     <>
-      <motion.header className="nav" data-scrolled={scrolled} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease, delay: 0.1 }}>
+      <motion.header data-ink className="nav" data-scrolled={scrolled} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease, delay: 0.1 }}>
         <div className="wrap">
           <a className="brand" href="#top" aria-label="Flashlink home" onClick={() => setOpen(false)}>
             <Mark /> Flashlink

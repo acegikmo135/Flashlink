@@ -151,7 +151,6 @@ export default function LandingPage() {
           <SceneCanvas onReady={() => setReady(true)} />
         </Suspense>
       )}
-      <div className="scrim" aria-hidden="true" />
       <Nav />
       <main className="main">
         <Hero />
