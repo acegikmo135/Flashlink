@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCU Bridge — your AI, hands on hardware</title>
+    <meta name="description" content="Chat with Claude, ChatGPT or Gemini. It compiles in the cloud and flashes the board on your desk through a small Windows app. No compile on your PC, firmware never stored in the cloud." />
+    <meta name="theme-color" content="#07090D" />
+    <meta property="og:title" content="MCU Bridge — your AI, hands on hardware" />
+    <meta property="og:description" content="An AI coding agent that flashes real microcontroller boards on your desk. ESP32, Arduino and STM32." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/media/launch-poster.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Motion is opt-out: states that animate are only hidden when JS runs and the visitor allows motion.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("motion-ok");
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

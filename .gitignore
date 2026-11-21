@@ -15,3 +15,6 @@ desktop/build/
 desktop/dist/
 desktop/build/
 cloud/wrangler.owner.toml
+site/shots/
+site/dist/
+site/node_modules/
