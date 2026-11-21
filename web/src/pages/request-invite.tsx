@@ -45,7 +45,7 @@ export function RequestInvitePage() {
           <form onSubmit={submit}>
             <CardHeader>
               <CardTitle className="text-xl">Request an invite</CardTitle>
-              <CardDescription>Flashlink accounts are invite-only. Tell us who you are and the owner will review it.</CardDescription>
+              <CardDescription>MCU Bridge accounts are invite-only. Tell us who you are and the owner will review it.</CardDescription>
             </CardHeader>
             <CardContent className="mt-4 space-y-4">
               {error && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}

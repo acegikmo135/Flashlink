@@ -20,7 +20,7 @@ export interface Env {
   SIGNUP_CODE: string;
   /** The owner: the signed-in account with this email gets the admin dashboard and receives invite-request mail. */
   ADMIN_EMAIL?: string;
-  /** Sender for outgoing mail, e.g. "Flashlink <invite@your-domain>". Required for either mail transport. */
+  /** Sender for outgoing mail, e.g. "MCU Bridge <invite@your-domain>". Required for either mail transport. */
   MAIL_FROM?: string;
   /** Mail transport A: Resend (wrangler secret). */
   RESEND_API_KEY?: string;

@@ -30,7 +30,7 @@ export function Hero() {
           <p className="hero-sub">An MCP-powered bridge between your AI coding agent and the hardware on your desk.</p>
           <div className="cta-row">
             <Button primary arrow href={README_START} target="_blank" rel="noreferrer" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.5 }}>Get started</Button>
-            <Button href="#story" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.6 }}>Explore Flashlink</Button>
+            <Button href="#story" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease, delay: 1.6 }}>Explore MCU Bridge</Button>
           </div>
         </div>
         <div className="hero-tag mono" data-ink data-fade>ESP32-WROOM-32<br /><span>development board</span></div>
@@ -44,7 +44,7 @@ export function Hero() {
 const BEATS = [
   { w: [-1, 0.2], h: "An instruction.", c: "Your AI agent asks for a flash.", where: "Your AI" },
   { w: [0.2, 0.42], h: "Built in the cloud.", c: "The sketch compiles remotely. Your PC never has to.", where: "Cloud" },
-  { w: [0.42, 0.66], h: "Received by your PC.", c: "The Flashlink app on Windows picks the firmware up.", where: "Your PC" },
+  { w: [0.42, 0.66], h: "Received by your PC.", c: "The MCU Bridge app on Windows picks the firmware up.", where: "Your PC" },
   { w: [0.66, 1.02], h: "Written over USB.", c: "Not by the cloud. By the app, with the right tool for the chip.", where: "USB" },
 ]
 export function Story() {
@@ -78,19 +78,19 @@ export function Product() {
       </div>
       <div className="prod-stage">
         <figure className="fig f1" data-reveal="x">
-          <div className="mask"><img src="/media/product-devices.webp" alt="Flashlink dashboard: connected boards with their chips, ports and names" width={2160} height={1350} loading="lazy" /></div>
+          <div className="mask"><img src="/media/product-devices.webp" alt="MCU Bridge dashboard: connected boards with their chips, ports and names" width={2160} height={1350} loading="lazy" /></div>
           <figcaption className="mono">Every board, by the name you gave it.</figcaption>
         </figure>
         <figure className="fig f2" data-reveal="y">
-          <div className="mask"><img src="/media/product-activity.webp" alt="Flashlink dashboard: activity log of builds and flashes" width={2160} height={1350} loading="lazy" /></div>
+          <div className="mask"><img src="/media/product-activity.webp" alt="MCU Bridge dashboard: activity log of builds and flashes" width={2160} height={1350} loading="lazy" /></div>
           <figcaption className="mono">Every job logged. Every verdict recorded.</figcaption>
         </figure>
         <figure className="fig f3" data-reveal="x">
-          <div className="mask"><img src="/media/product-overview.webp" alt="Flashlink dashboard overview" width={2160} height={1350} loading="lazy" /></div>
+          <div className="mask"><img src="/media/product-overview.webp" alt="MCU Bridge dashboard overview" width={2160} height={1350} loading="lazy" /></div>
           <figcaption className="mono">The bench at a glance.</figcaption>
         </figure>
         <figure className="fig f4" data-reveal="y">
-          <div className="mask"><img src="/media/product-access.webp" alt="Flashlink dashboard: connector and access settings" width={2160} height={1350} loading="lazy" /></div>
+          <div className="mask"><img src="/media/product-access.webp" alt="MCU Bridge dashboard: connector and access settings" width={2160} height={1350} loading="lazy" /></div>
           <figcaption className="mono">Connect an assistant once.</figcaption>
         </figure>
       </div>
@@ -184,7 +184,7 @@ export function Final() {
           </div>
         </div>
         <footer className="foot mono" data-ink>
-          <span>Flashlink · MIT licensed</span>
+          <span>MCU Bridge · MIT licensed</span>
           <nav aria-label="Footer">
             <a href={DOCS} target="_blank" rel="noreferrer">Docs</a>
             <a href={DOCS_BOARDS} target="_blank" rel="noreferrer">Supported boards</a>

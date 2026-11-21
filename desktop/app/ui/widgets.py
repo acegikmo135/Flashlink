@@ -359,7 +359,7 @@ _ = (QPushButton, _GLYPHS)
 
 
 def logo_pixmap(size: int):
-    """The app logo (blue tile, chip + cloud) scaled crisply for `size` logical px."""
+    """The app logo (ink tile, two bridge arches) scaled crisply for `size` logical px."""
     import base64
 
     from PySide6.QtGui import QGuiApplication, QPixmap
@@ -375,7 +375,7 @@ def logo_pixmap(size: int):
 
 
 class BrandMark(QWidget):
-    """Logo mark: blue rounded tile with a chip + cloud (same glyph as the web app)."""
+    """Logo mark: ink rounded tile with the two-arch bridge mark (same glyph as the web app)."""
 
     def __init__(self, size: int = 26) -> None:
         super().__init__()

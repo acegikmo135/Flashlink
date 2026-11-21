@@ -70,7 +70,7 @@ npx wrangler d1 migrations apply mcu-bridge --remote      # adds the invite tabl
 npx wrangler secret put ADMIN_EMAIL                       # your account's email: admin access + request notifications
 ```
 
-Then add `MAIL_FROM` (e.g. `Flashlink <invite@your-domain>`) as a variable and choose **one** mail transport:
+Then add `MAIL_FROM` (e.g. `MCU Bridge <invite@your-domain>`) as a variable and choose **one** mail transport:
 
 | Transport | Setup |
 |---|---|

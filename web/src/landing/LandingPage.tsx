@@ -40,7 +40,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     const prev = document.title
-    document.title = "Flashlink — Give intelligence a physical connection"
+    document.title = "MCU Bridge — Give intelligence a physical connection"
     const el = document.documentElement
     const bg = el.style.backgroundColor
     el.style.backgroundColor = "#07090d"

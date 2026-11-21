@@ -19,7 +19,7 @@ INSTALLER_URL = "https://github.com/acegikmo135/Flashlink/releases/download/desk
 
 # Invite requests & admin dashboard (docs/setup.md → "Invite requests and the admin dashboard"):
 #   ADMIN_EMAIL (var or secret) = your account's email → you get the Admin page and the request emails.
-#   MAIL_FROM   (var)           = "Flashlink <invite@your-domain>".
+#   MAIL_FROM   (var)           = "MCU Bridge <invite@your-domain>".
 # Mail transport — pick ONE:
 #   A) Resend:                   wrangler secret put RESEND_API_KEY
 #   B) Cloudflare Email Routing: uncomment the binding below (the destination must be a verified Email Routing address).

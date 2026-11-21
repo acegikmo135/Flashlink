@@ -34,7 +34,7 @@ export async function handleInviteRequest(request: Request, env: Env, url: URL, 
     const link = `${url.origin}/dashboard/admin`;
     const text = `New invite request\n\nName: ${name || "(not given)"}\nEmail: ${email}\n\n${message || "(no message)"}\n\nReview and approve: ${link}\n`;
     const html = `<p><b>New invite request</b></p><p>Name: ${escapeHtml(name || "(not given)")}<br>Email: ${escapeHtml(email)}</p><p>${escapeHtml(message || "(no message)").replace(/\n/g, "<br>")}</p><p><a href="${escapeHtml(link)}">Review and approve</a></p>`;
-    const r = await sendMail(env, { to: env.ADMIN_EMAIL, subject: `Flashlink invite request: ${name || email}`, text, html, replyTo: email });
+    const r = await sendMail(env, { to: env.ADMIN_EMAIL, subject: `MCU Bridge invite request: ${name || email}`, text, html, replyTo: email });
     mailStatus = r.ok ? `sent:${r.via}` : `failed:${r.error}`.slice(0, 200);
   }
   await env.DB.prepare("INSERT INTO invite_requests (id, email, name, message, status, ip_hash, created_at, mail_status) VALUES (?1,?2,?3,?4,'pending',?5,?6,?7)")
@@ -47,9 +47,9 @@ async function inviteMail(env: Env, url: URL, to: string, code: string, expires:
   if (!mailTransport(env)) return "not_configured";
   const link = `${url.origin}/signup`;
   const exp = expires ? `\nThe code is valid until ${new Date(expires).toUTCString()}.` : "";
-  const text = `You're invited to Flashlink.\n\nYour invite code: ${code}\n\nCreate your account at ${link}${exp}\n`;
-  const html = `<p>You're invited to Flashlink.</p><p>Your invite code:<br><b style="font-size:18px;letter-spacing:1px">${escapeHtml(code)}</b></p><p><a href="${escapeHtml(link)}">Create your account</a></p>${expires ? `<p>Valid until ${escapeHtml(new Date(expires).toUTCString())}.</p>` : ""}`;
-  const r = await sendMail(env, { to, subject: "Your Flashlink invite code", text, html });
+  const text = `You're invited to MCU Bridge.\n\nYour invite code: ${code}\n\nCreate your account at ${link}${exp}\n`;
+  const html = `<p>You're invited to MCU Bridge.</p><p>Your invite code:<br><b style="font-size:18px;letter-spacing:1px">${escapeHtml(code)}</b></p><p><a href="${escapeHtml(link)}">Create your account</a></p>${expires ? `<p>Valid until ${escapeHtml(new Date(expires).toUTCString())}.</p>` : ""}`;
+  const r = await sendMail(env, { to, subject: "Your MCU Bridge invite code", text, html });
   return r.ok ? `sent:${r.via}` : `failed:${r.error}`.slice(0, 200);
 }
 

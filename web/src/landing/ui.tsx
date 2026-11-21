@@ -29,12 +29,13 @@ export function Button({ primary, small, children, arrow, className = "", ...res
   )
 }
 
+/** The MCU Bridge mark: two bridge arches — the first ink, the second the blue signal. */
 export function Mark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <rect x="6" y="6" width="12" height="12" rx="1.5" />
-      <path d="M9 3v3M12 3v3M15 3v3M9 18v3M12 18v3M15 18v3M3 9h3M3 12h3M3 15h3M18 9h3M18 12h3M18 15h3" />
-      <circle cx="12" cy="12" r="1.6" fill="var(--accent)" stroke="none" />
+    <svg viewBox="32 52 176 160" aria-hidden="true">
+      
+      <path d="M104 204V108A48 48 0 0 1 200 108V204H168V108A16 16 0 0 0 136 108V204Z" fill="var(--accent)" />
+      <path d="M40 204V108A48 48 0 0 1 136 108V204H104V108A16 16 0 0 0 72 108V204Z" fill="currentColor" />
     </svg>
   )
 }

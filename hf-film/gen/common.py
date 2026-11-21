@@ -14,10 +14,9 @@ CURSOR = (
 )
 
 LOGO_GLYPH = (
-    '<g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">'
-    '<rect x="14" y="14" width="36" height="36" rx="7"/>'
-    '<path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/>'
-    '<path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g>'
+    '<g transform="translate(3.50 0.65) scale(0.2375)">'
+    '<path d="M104 204V108A48 48 0 0 1 200 108V204H168V108A16 16 0 0 0 136 108V204Z" fill="#3185FF"/>'
+    '<path d="M40 204V108A48 48 0 0 1 136 108V204H104V108A16 16 0 0 0 72 108V204Z" fill="#F4F6F8"/></g>'
 )
 
 # top-down ESP32 dev board, drawn in a 660x250 box (origin top-left)

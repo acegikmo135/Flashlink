@@ -1,4 +1,4 @@
-/* Flashlink landing — "Signal into matter". Scoped under .lp so the app's tokens are untouched. */
+/* MCU Bridge landing — "Signal into matter". Scoped under .lp so the app's tokens are untouched. */
 .lp {
   --bg: #07090d;
   --bg2: #0b1019;
@@ -81,7 +81,7 @@
 .lp .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; height: 64px; }
 .lp .nav .wrap { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--pad); }
 .lp .brand { color: var(--fg); display: inline-flex; align-items: center; gap: 10px; font: 400 22px/1 var(--display); letter-spacing: 0; }
-.lp .brand svg { width: 20px; height: 20px; }
+.lp .brand svg { width: 24px; height: 22px; }
 .lp .nav ul { display: flex; gap: 34px; list-style: none; margin: 0; padding: 0; }
 .lp .nav ul a { font-size: 13.5px; color: var(--mute); transition: color 0.2s; }
 .lp .nav ul a:hover { color: var(--fg); }

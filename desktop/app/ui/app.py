@@ -4,8 +4,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractNativeEventFilter, QEasingCurve, QLockFile, QObject, QPropertyAnimation, QRect, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtCore import QAbstractNativeEventFilter, QEasingCurve, QLockFile, QObject, QPropertyAnimation, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QMainWindow, QMenu, QPushButton, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget
 
 from app.core.agent import Agent
@@ -16,20 +16,37 @@ from . import theme
 from .widgets import BrandMark, NavButton, Segmented, UserCard, fade_in, label
 
 
-def make_icon(size: int = 64, color: str = theme.FG, bg: str | None = None) -> QIcon:
+def make_icon(size: int = 64, color: str = theme.FG, bg: str | None = None, accent: str = "#3185FF") -> QIcon:
+    """The MCU Bridge mark: two bridge arches (first `color`, second the blue `accent`); on a rounded tile when `bg` is given."""
     pm = QPixmap(size, size)
-    pm.fill(QColor(bg) if bg else Qt.transparent)
+    pm.fill(Qt.transparent)
     p = QPainter(pm)
     p.setRenderHint(QPainter.Antialiasing)
-    pen = QPen(QColor(color))
-    pen.setWidthF(size * 0.085)
-    p.setPen(pen)
-    m = size * 0.22
-    p.drawRect(int(m), int(m), int(size - 2 * m), int(size - 2 * m))
+    p.setPen(Qt.NoPen)
+    if bg:
+        p.setBrush(QColor(bg))
+        p.drawRoundedRect(0, 0, size, size, size * 0.22, size * 0.22)
+    s = size * (0.60 if bg else 0.92) / 160  # the mark is 160 design units wide (x 40..200, y 60..204)
+    p.translate(size / 2 - 120 * s, size / 2 - 132 * s)
+    p.scale(s, s)
+
+    def arch(x0: float) -> QPainterPath:
+        path = QPainterPath()
+        path.moveTo(x0, 204)
+        path.lineTo(x0, 108)
+        path.arcTo(QRectF(x0, 60, 96, 96), 180, -180)
+        path.lineTo(x0 + 96, 204)
+        path.lineTo(x0 + 64, 204)
+        path.lineTo(x0 + 64, 108)
+        path.arcTo(QRectF(x0 + 32, 92, 32, 32), 0, 180)
+        path.lineTo(x0 + 32, 204)
+        path.closeSubpath()
+        return path
+
+    p.setBrush(QColor(accent))
+    p.drawPath(arch(104))
     p.setBrush(QColor(color))
-    c = size * 0.5
-    r = size * 0.1
-    p.drawEllipse(int(c - r), int(c - r), int(2 * r), int(2 * r))
+    p.drawPath(arch(40))
     p.end()
     return QIcon(pm)
 

@@ -60,7 +60,7 @@ describe("mail helpers", () => {
     expect(mime.split("\r\n\r\n")[0]).not.toMatch(/^Bcc:/m);
   });
   it("parses sender addresses and escapes html", () => {
-    expect(bareAddress("Flashlink <invite@d.co>")).toBe("invite@d.co");
+    expect(bareAddress("MCU Bridge <invite@d.co>")).toBe("invite@d.co");
     expect(bareAddress("invite@d.co")).toBe("invite@d.co");
     expect(escapeHtml(`<b onclick="x">&'`)).toBe("&lt;b onclick=&quot;x&quot;&gt;&amp;&#39;");
   });
@@ -73,7 +73,7 @@ describe("mail helpers", () => {
 
 describe("invite requests", () => {
   it("stores the request and mails the owner (Resend)", async () => {
-    const env = mkEnv({ ADMIN_EMAIL: "owner@x.co", MAIL_FROM: "Flashlink <invite@x.co>", RESEND_API_KEY: "rk" });
+    const env = mkEnv({ ADMIN_EMAIL: "owner@x.co", MAIL_FROM: "MCU Bridge <invite@x.co>", RESEND_API_KEY: "rk" });
     const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     const r = await handleInviteRequest(req(), env, URLO, { email: "Ada@Example.com", name: "Ada", message: "I build robots" });

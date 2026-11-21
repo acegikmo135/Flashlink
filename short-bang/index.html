@@ -94,13 +94,14 @@ svg.beam{position:absolute;left:0;top:0;width:11000px;height:1920px;overflow:vis
       <div class="msg ai" id="m2">Compiling for your Uno, then flashing it now.<br><span class="tool">⚡ build_and_flash</span><div class="bar"><i id="cbar"></i></div></div>
     </div>
     <div class="at" id="cloudwrap" style="left:3300px;top:960px;width:540px;height:540px">
-      <svg viewBox="0 0 64 64" width="540" height="540" style="overflow:visible">
-        <defs><filter id="cg" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.6"/></filter></defs>
-        <g fill="none" stroke="#7fc0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#cg)" opacity=".7" id="lgGlow"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z"/></g>
-        <g fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="lgDraw">
-          <rect id="lgChip" x="14" y="14" width="36" height="36" rx="7" pathLength="1"/>
-          <path id="lgPins" d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="1.5" pathLength="1"/>
-          <path id="lgCloud" d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="1.5" pathLength="1"/></g>
+      <svg viewBox="20 32 200 200" width="540" height="540" style="overflow:visible">
+        <defs><filter id="cg" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+        <g fill="none" stroke="#7fc0ff" stroke-width="40" stroke-linecap="butt" filter="url(#cg)" opacity=".7" id="lgGlow"><path d="M56 204V108A32 32 0 0 1 120 108V204M120 204V108A32 32 0 0 1 184 108V204"/></g>
+        <g fill="none" stroke="#fff" stroke-width="32" stroke-linecap="butt" id="lgDraw">
+          <path id="lgCloud" stroke="#5aa2ff" d="M120 204V108A32 32 0 0 1 184 108V204" pathLength="1"/>
+          <path id="lgChip" stroke="#ffffff" d="M56 204V108A32 32 0 0 1 120 108V204" pathLength="1"/>
+          <path id="lgPins" d="M0 0L0 0" pathLength="1"/>
+          </g>
       </svg>
     </div>
     <div id="codes"></div>
@@ -110,7 +111,7 @@ svg.beam{position:absolute;left:0;top:0;width:11000px;height:1920px;overflow:vis
     </div>
     <div class="at" id="mon" style="left:5700px;top:960px">
       <div id="screen">
-        <div id="side"><div class="brand"><svg width="34" height="34" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#007aff"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>MCU Bridge</div><div class="nav on"></div><div class="nav"></div><div class="nav"></div></div>
+        <div id="side"><div class="brand"><svg width="34" height="34" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#07090D"/><rect x=".5" y=".5" width="63" height="63" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".14"/><g transform="translate(3.50 0.65) scale(0.2375)"><path d="M104 204V108A48 48 0 0 1 200 108V204H168V108A16 16 0 0 0 136 108V204Z" fill="#3185FF"/><path d="M40 204V108A48 48 0 0 1 136 108V204H104V108A16 16 0 0 0 72 108V204Z" fill="#F4F6F8"/></g></svg>MCU Bridge</div><div class="nav on"></div><div class="nav"></div><div class="nav"></div></div>
         <div id="main">
           <div class="h1">Devices</div>
           <div class="dev"><div class="ic">UNO</div><div class="t"><b>Arduino Uno</b><span id="devline">COM5 · ready</span></div><div class="st" id="devst"><i class="dot"></i>Connected</div></div>
@@ -155,7 +156,7 @@ svg.beam{position:absolute;left:0;top:0;width:11000px;height:1920px;overflow:vis
     <i style="position:absolute;left:-400px;top:-300px;width:1400px;height:1400px;border-radius:50%;background:radial-gradient(circle,rgba(108,196,255,.55),rgba(108,196,255,0) 66%)"></i>
     <i class="fb2" style="position:absolute;left:200px;top:1000px;width:1200px;height:1200px;border-radius:50%;background:radial-gradient(circle,rgba(58,107,255,.5),rgba(58,107,255,0) 66%)"></i>
     <i class="ring" id="ring"></i>
-    <svg class="lg" id="lg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#007aff" stroke="rgba(255,255,255,.35)" stroke-width=".6"/><g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="36" height="36" rx="7"/><path d="M24 8v6M32 8v6M40 8v6M24 50v6M32 50v6M40 50v6M8 24h6M8 32h6M8 40h6M50 24h6M50 32h6M50 40h6" stroke-width="3"/><path d="M25 39a5 5 0 0 1-.6-9.9 7.5 7.5 0 0 1 14.2 1.3A4.3 4.3 0 0 1 38 39z" stroke-width="3"/></g></svg>
+    <svg class="lg" id="lg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#07090D"/><rect x=".5" y=".5" width="63" height="63" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".14"/><g transform="translate(3.50 0.65) scale(0.2375)"><path d="M104 204V108A48 48 0 0 1 200 108V204H168V108A16 16 0 0 0 136 108V204Z" fill="#3185FF"/><path d="M40 204V108A48 48 0 0 1 136 108V204H104V108A16 16 0 0 0 72 108V204Z" fill="#F4F6F8"/></g></svg>
     <div id="wm">MCU Bridge</div>
     <div id="tag">Your AI, <em>hands on</em> hardware</div>
     <div id="chips"><span class="pill">ESP32</span><span class="pill">Arduino Uno · Nano · Mega</span><span class="pill">Works in any AI chat</span></div>
@@ -177,7 +178,7 @@ function applyCam(){world.style.transform=`translate(${540-cam.cx*cam.s}px,${960
 applyCam();
 const camTo=(at,dur,{cx,cy,s,ease='power3.inOut',dip=null})=>{tl.to(cam,{cx,cy,duration:dur,ease,onUpdate:applyCam},at);
   if(dip!=null){tl.to(cam,{s:dip,duration:dur*.5,ease:'sine.inOut',onUpdate:applyCam},at);tl.to(cam,{s,duration:dur*.5,ease:'sine.inOut',onUpdate:applyCam},at+dur*.5);}else tl.to(cam,{s,duration:dur,ease,onUpdate:applyCam},at);};
-const defs=(()=>{const n='http://www.w3.org/2000/svg';const s=document.createElementNS(n,'svg');s.style.cssText='position:fixed;width:0;height:0';s.innerHTML='<defs></defs>';document.body.appendChild(s);return s.firstChild;})();let fc=0;
+const defs=(()=>{const n='http://www.w3.org/2000/svg';const s=document.createElementNS(n,'svg');s.style.cssText='position:fixed;width:0;height:0';s.innerHTML='';document.body.appendChild(s);return s.firstChild;})();let fc=0;
 function blurTween(targets,at,from,to,dur,ax=1,ay=.08,ease='power3.out'){const id='mb'+(fc++),n='http://www.w3.org/2000/svg';const f=document.createElementNS(n,'filter');f.id=id;f.setAttribute('x','-70%');f.setAttribute('y','-70%');f.setAttribute('width','240%');f.setAttribute('height','240%');
   const g=document.createElementNS(n,'feGaussianBlur');g.setAttribute('stdDeviation','0 0');f.appendChild(g);defs.appendChild(f);const o={v:from};tl.set(targets,{filter:`url(#${id})`},at);
   tl.to(o,{v:to,duration:dur,ease,onUpdate(){g.setAttribute('stdDeviation',`${(o.v*ax).toFixed(2)} ${(o.v*ay).toFixed(2)}`);}},at);tl.set(targets,{filter:'none'},at+dur);}

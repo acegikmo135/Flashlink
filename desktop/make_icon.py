@@ -1,4 +1,6 @@
-"""Generate assets/icon.ico (run once; the .ico is committed). Needs PySide6."""
+"""Generate assets/icon.ico (run once; the .ico is committed). Needs PySide6.
+
+The committed icon/logo PNGs were rendered from docs/assets/logo.svg; this script draws the same mark with Qt."""
 import os
 import sys
 from pathlib import Path
@@ -13,6 +15,6 @@ from app.ui import theme  # noqa: E402
 app = QGuiApplication([])
 out = Path(__file__).parent / "assets"
 out.mkdir(exist_ok=True)
-pm = make_icon(256, "#0b0b0c", "#e8e8ea").pixmap(256, 256)
+pm = make_icon(256, "#F4F6F8", "#07090D").pixmap(256, 256)
 img: QImage = pm.toImage()
 print("ico:", img.save(str(out / "icon.ico"), "ICO"), "png:", img.save(str(out / "icon.png"), "PNG"))
