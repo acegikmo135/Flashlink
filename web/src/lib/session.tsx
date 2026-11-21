@@ -13,7 +13,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionData | null>(null)
   const reload = useCallback(async () => {
     try {
-      setSession(await api<SessionData>("/api/web/session"))
+      const data = await api<SessionData | null>("/api/web/session")
+      if (!data || typeof data !== "object" || !("config" in data)) throw new Error("no session API")
+      setSession(data)
     } catch {
       setSession({ user: null, config: { origin: window.location.origin, installer_url: null } })
     }
