@@ -63,7 +63,7 @@ export function AuthPage({ mode }: { mode: "login" | "signup" }) {
         <form onSubmit={submit}>
           <CardHeader>
             <CardTitle className="text-xl">{signup ? "Create your account" : "Welcome back"}</CardTitle>
-            <CardDescription>{signup ? "An invite code is required. The setup script printed it once." : "Sign in to manage your desktop apps, devices and access."}</CardDescription>
+            <CardDescription>{signup ? "An invite code is required. Ask the owner for one, or request it below." : "Sign in to manage your desktop apps, devices and access."}</CardDescription>
           </CardHeader>
           <CardContent className="mt-4 space-y-4">
             {error && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
@@ -79,6 +79,7 @@ export function AuthPage({ mode }: { mode: "login" | "signup" }) {
               <div className="space-y-2">
                 <Label htmlFor="invite">Invite code</Label>
                 <Input id="invite" autoComplete="off" spellCheck={false} required value={form.invite} onChange={(e) => setForm({ ...form, invite: e.target.value })} />
+                <p className="text-xs text-muted-foreground">No code? <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/request-invite">Request an invite</Link></p>
               </div>
             )}
           </CardContent>

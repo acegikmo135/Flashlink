@@ -67,3 +67,14 @@ export interface Overview {
   apps: { client_id: string; name: string; since: number }[]
   jobs: JobRow[]
 }
+
+export interface InviteRequestRow { id: string; email: string; name: string | null; message: string | null; status: "pending" | "approved" | "rejected"; created_at: number; handled_at: number | null; invite_id: string | null; mail_status: string | null }
+export interface InviteRow { id: string; code_hint: string; label: string | null; email: string | null; max_uses: number; uses: number; expires_at: number | null; created_at: number; revoked_at: number | null; request_id: string | null }
+export interface AdminOverview {
+  mail: { transport: "resend" | "cloudflare" | null; admin_email_set: boolean; from_set: boolean }
+  master_code_set: boolean
+  stats: { users: number; pending: number; active_invites: number; agents: number; jobs: number }
+  requests: InviteRequestRow[]
+  invites: InviteRow[]
+  users: { id: string; email: string; created_at: number; invite_label: string | null }[]
+}

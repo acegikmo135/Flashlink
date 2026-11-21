@@ -109,6 +109,8 @@ Cloudflare creates the DNS record and the certificate for you. Re-running the sc
 
 Open `https://<your-worker>/signup`, create your account with the invite code, and you land on the dashboard.
 
+> **Hand out access to others:** set `ADMIN_EMAIL` to your account and visitors can request an invite at `/request-invite`; you approve from **Dashboard → Admin** and the code is emailed to them — see [docs/setup.md](docs/setup.md#invite-requests-and-the-admin-dashboard).
+
 ### 2. Install the Windows app
 
 [**⬇ Download MCUBridge-Setup.exe**](https://github.com/acegikmo135/Flashlink/releases/download/desktop-latest/MCUBridge-Setup.exe) (about 28 MB, per-user install, no admin rights).

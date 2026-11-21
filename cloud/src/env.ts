@@ -18,4 +18,12 @@ export interface Env {
   COMPILE_LIMIT?: string;
   /** Invite code required to create an account (wrangler secret). */
   SIGNUP_CODE: string;
+  /** The owner: the signed-in account with this email gets the admin dashboard and receives invite-request mail. */
+  ADMIN_EMAIL?: string;
+  /** Sender for outgoing mail, e.g. "Flashlink <invite@your-domain>". Required for either mail transport. */
+  MAIL_FROM?: string;
+  /** Mail transport A: Resend (wrangler secret). */
+  RESEND_API_KEY?: string;
+  /** Mail transport B: Cloudflare Email Routing `send_email` binding (destination must be a verified address). */
+  SEND_EMAIL?: SendEmail;
 }

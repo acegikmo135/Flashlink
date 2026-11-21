@@ -3,6 +3,7 @@ import { api, type Overview } from "./api"
 
 export interface SessionData {
   user: { id: string; email: string } | null
+  admin?: boolean
   config: { origin: string; installer_url: string | null }
 }
 

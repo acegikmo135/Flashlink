@@ -189,6 +189,7 @@ export function Final() {
             <a href={DOCS} target="_blank" rel="noreferrer">Docs</a>
             <a href={DOCS_BOARDS} target="_blank" rel="noreferrer">Supported boards</a>
             <a href={DOCS_SECURITY} target="_blank" rel="noreferrer">Security</a>
+            <a href="/request-invite">Request an invite</a>
             <a href="/login">Sign in</a>
           </nav>
         </footer>

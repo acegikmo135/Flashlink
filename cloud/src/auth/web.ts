@@ -6,6 +6,8 @@ import { hashPassword, randomId, randomToken, sha256Hex, timingSafeEqual, verify
 import { clientIp, errorJson, json } from "../lib/http";
 import { rateLimit } from "../lib/ratelimit";
 import { createToken, loadOverview, revokeAgent, revokeApp, revokeToken } from "./account";
+import { handleAdmin, handleInviteRequest, isAdminEmail } from "./admin";
+import { claimInvite, releaseInvite } from "./invites";
 import { oauthAuthorizeInfo, oauthDecision } from "./oauth";
 
 export { revokeAgent };
@@ -80,7 +82,7 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
   const unauth = () => errorJson(401, "UNAUTHENTICATED", "Sign in required.");
 
   if (path === "/api/web/session" && method === "GET") {
-    return json({ ok: true, user, config: { origin: url.origin, installer_url: `${url.origin}/download/MCUBridge-Setup.exe`, signup_requires_invite: true } });
+    return json({ ok: true, user, admin: !!user && isAdminEmail(env, user.email), config: { origin: url.origin, installer_url: `${url.origin}/download/MCUBridge-Setup.exe`, signup_requires_invite: true } });
   }
 
   if (path === "/api/web/signup" && method === "POST") {
@@ -91,11 +93,16 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
     if (!(await rateLimit(env, `signup:${clientIp(request)}`, 8, 3600))) return errorJson(429, "RATE_LIMITED", "Too many attempts. Try again later.");
     if (!/^[^@\s]{1,64}@[^@\s]{1,255}$/.test(email)) return errorJson(400, "INVALID_EMAIL", "Enter a valid email address.");
     if (pw.length < 10 || pw.length > 200) return errorJson(400, "WEAK_PASSWORD", "Password must be 10–200 characters.");
-    if (!env.SIGNUP_CODE || !timingSafeEqual(str(b.invite), env.SIGNUP_CODE)) return errorJson(403, "INVALID_INVITE", "Invalid invite code.");
+    // The deployment's master code (SIGNUP_CODE) always works; otherwise the code must be a valid admin-issued invite.
+    const invite = str(b.invite);
+    const master = !!env.SIGNUP_CODE && timingSafeEqual(invite, env.SIGNUP_CODE);
+    const inviteId = master ? null : await claimInvite(env, invite);
+    if (!master && !inviteId) return errorJson(403, "INVALID_INVITE", "Invalid, expired or already used invite code.");
     const u = { id: randomId("usr", 9), email };
     try {
-      await env.DB.prepare("INSERT INTO users (id, email, password_hash, created_at) VALUES (?1,?2,?3,?4)").bind(u.id, email, await hashPassword(pw), Date.now()).run();
+      await env.DB.prepare("INSERT INTO users (id, email, password_hash, created_at, invite_id) VALUES (?1,?2,?3,?4,?5)").bind(u.id, email, await hashPassword(pw), Date.now(), inviteId).run();
     } catch {
+      if (inviteId) await releaseInvite(env, inviteId);
       return errorJson(409, "EMAIL_EXISTS", "An account with this email already exists.");
     }
     return startSession(request, env, u);
@@ -113,6 +120,8 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
     return startSession(request, env, { id: row.id, email: row.email });
   }
 
+  if (path === "/api/web/invite-request" && method === "POST") return handleInviteRequest(request, env, url, await body(request));
+
   if (path === "/api/web/logout" && method === "POST") {
     const sid = cookieOf(request, SESSION_COOKIE);
     if (sid) await env.DB.prepare("DELETE FROM web_sessions WHERE id_hash = ?1").bind(await sha256Hex(sid)).run();
@@ -127,6 +136,11 @@ export async function handleWebApi(request: Request, env: Env, url: URL): Promis
   if (path === "/api/web/oauth/decision" && method === "POST") {
     const b = await body<Record<string, string>>(request);
     return b ? oauthDecision(env, url, user, b) : errorJson(400, "BAD_REQUEST", "JSON body required.");
+  }
+
+  if (path.startsWith("/api/web/admin/")) {
+    if (!isAdminEmail(env, user.email)) return errorJson(403, "FORBIDDEN", "Admin access only.");
+    return (await handleAdmin(env, url, method, method === "GET" ? null : await body(request))) ?? errorJson(404, "NOT_FOUND", "Unknown API route.");
   }
 
   if (path === "/api/web/overview" && method === "GET") return json({ ok: true, ...(await loadOverview(env, user.id, user.email)) });

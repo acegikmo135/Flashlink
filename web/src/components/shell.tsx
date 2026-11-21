@@ -1,4 +1,4 @@
-import { Activity, KeyRound, LayoutDashboard, LogOut, Settings, Usb } from "lucide-react"
+import { Activity, KeyRound, LayoutDashboard, LogOut, Settings, ShieldCheck, Usb } from "lucide-react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Brand } from "@/components/logo"
@@ -8,7 +8,9 @@ import { api } from "@/lib/api"
 import { OverviewProvider, useSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
-const NAV = [
+type NavItem = { to: string; label: string; icon: typeof Usb; tint: string; end?: boolean }
+const NAV_ADMIN: NavItem = { to: "/dashboard/admin", label: "Admin", icon: ShieldCheck, tint: "bg-ios-red" }
+const NAV: NavItem[] = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, tint: "bg-ios-blue", end: true },
   { to: "/dashboard/devices", label: "Devices", icon: Usb, tint: "bg-ios-green" },
   { to: "/dashboard/activity", label: "Activity", icon: Activity, tint: "bg-ios-orange" },
@@ -25,6 +27,7 @@ export function Shell() {
   const nav = useNavigate()
   const loc = useLocation()
   const email = session?.user?.email ?? ""
+  const items = session?.admin ? [...NAV, NAV_ADMIN] : NAV
 
   async function signOut() {
     await api("/api/web/logout", { method: "POST", body: {} })
@@ -42,7 +45,7 @@ export function Shell() {
             <Brand />
           </div>
           <nav className="flex flex-1 flex-col gap-1">
-            {NAV.map((n) => (
+            {items.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -89,8 +92,8 @@ export function Shell() {
         </main>
 
         {/* Mobile tab bar (iOS style) */}
-        <nav className="ios-glass fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-sidebar-border px-1 pb-[max(env(safe-area-inset-bottom),0.25rem)] pt-1.5 md:hidden">
-          {NAV.map((n) => (
+        <nav className="ios-glass fixed inset-x-0 bottom-0 z-30 grid grid-flow-col auto-cols-fr border-t border-sidebar-border px-1 pb-[max(env(safe-area-inset-bottom),0.25rem)] pt-1.5 md:hidden">
+          {items.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn("flex flex-col items-center gap-0.5 rounded-xl py-1 text-[10px] font-medium transition-all duration-300 active:scale-90", isActive ? "text-ios-blue" : "text-muted-foreground")}>
               <n.icon className="size-[22px]" strokeWidth={2} />
               {n.label}

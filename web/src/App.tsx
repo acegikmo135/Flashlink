@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useSession } from "@/lib/session"
 import { AccessPage } from "@/pages/access"
 import { AccountPage } from "@/pages/account"
+import { AdminPage } from "@/pages/admin"
+import { RequestInvitePage } from "@/pages/request-invite"
 import { ActivityPage } from "@/pages/activity"
 import { AuthPage } from "@/pages/auth"
 import { AuthorizePage, PairPage } from "@/pages/consent"
@@ -43,6 +45,8 @@ export default function App() {
       <Route path="/home" element={<Landing />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/signup" element={<AuthPage mode="signup" />} />
+      <Route path="/request-invite" element={<RequestInvitePage />} />
+      <Route path="/admin" element={<Navigate to="/dashboard/admin" replace />} />
       <Route path="/pair" element={<PairPage />} />
       <Route path="/oauth/authorize" element={<AuthorizePage />} />
       <Route path="/dashboard" element={<Protected><Shell /></Protected>}>
@@ -51,6 +55,7 @@ export default function App() {
         <Route path="activity" element={<ActivityPage />} />
         <Route path="access" element={<AccessPage />} />
         <Route path="account" element={<AccountPage />} />
+        <Route path="admin" element={<AdminPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

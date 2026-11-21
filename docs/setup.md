@@ -54,6 +54,31 @@ vendor page (**Get…**). USB drivers (CP210x / CH340 / FTDI / ST-Link / WCH-Lin
 **Account (in the app).** See your computers, create/revoke access tokens, disconnect connected apps (OAuth), open the web
 dashboard, or disconnect this PC.
 
+## Invite requests and the admin dashboard
+
+Sign-up is invite-only. Besides the master `SIGNUP_CODE` the setup script prints, you can hand out **individual invite codes** (single- or multi-use, expiring, revocable) and let people **request** one:
+
+* A visitor opens `/request-invite` (linked from the sign-up page and the site footer) and leaves an email, an optional name and a note. Duplicate/spam requests are rate-limited, and a hidden honeypot field catches bots.
+* You get an email. Open **Dashboard → Admin**, review the request and press **Approve**: a code like `FLASH-XXXX-XXXX-XXXX` is created and, if you leave the switch on, emailed to the requester. The code is shown to you once; only its hash is stored.
+* **Admin** also lists all codes (with uses, expiry, revoke), every account, and lets you create codes manually.
+
+Turn it on (the admin page is available to **one** account — the one whose email equals `ADMIN_EMAIL`):
+
+```bash
+cd cloud
+npx wrangler d1 migrations apply mcu-bridge --remote      # adds the invite tables (0006)
+npx wrangler secret put ADMIN_EMAIL                       # your account's email: admin access + request notifications
+```
+
+Then add `MAIL_FROM` (e.g. `Flashlink <invite@your-domain>`) as a variable and choose **one** mail transport:
+
+| Transport | Setup |
+|---|---|
+| **Resend** | `npx wrangler secret put RESEND_API_KEY`; verify your sending domain in Resend. |
+| **Cloudflare Email Routing** | Enable Email Routing on your domain, verify your own address as a destination, and uncomment the `[[send_email]]` binding in `wrangler.toml` (`destination_address` = that address). |
+
+Without a transport nothing breaks: requests are saved and shown in **Admin**, the page just tells you mail is off. Sign in with the account that has the `ADMIN_EMAIL` address (create it with the master code the first time).
+
 ## 4a. Add as a claude.ai connector (recommended — OAuth, no token to copy)
 
 1. claude.ai → Settings → Connectors → **Add custom connector**.
