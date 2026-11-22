@@ -77,7 +77,7 @@ child processes only while flashing. Measured numbers are in the README.
 
 `compile_firmware` / `build_and_flash` (cloud/src/compile/backend.ts) send the Arduino sketch to a remote build service
 (default: Wokwi's public `hexi` server; replace via the `COMPILER_URL` variable) which returns Intel HEX (AVR) or an ESP32
-application image. For `build_and_flash` the Worker checks the target device first, builds the manifest *from the build output*
+application image. `estimate_compile_time` gives a rough (±50 %) duration from the board, libraries and `#include`s; builds estimated at ≥ 75 s get a 3-minute limit, others 2 minutes, and results carry `build_time`. For `build_and_flash` the Worker checks the target device first, builds the manifest *from the build output*
 (ESP flash mode/size/frequency are read from the image header), creates the job and then acts as the uploader: the bytes are
 PUT straight into the job's TransferRelay (memory only) while the desktop downloads them. Nothing is stored; the source is
 sent to the build service, which is the one privacy trade-off.

@@ -150,7 +150,7 @@ For a better experience, give your AI the bundled skill: [`skills/mcu-bridge/SKI
 | | Tools |
 |---|---|
 | **Look around** | `list_devices` · `get_device_info` · `get_device_status` · `identify_mcu` · `detect_new_devices` · `rename_device` · `get_supported_boards` |
-| **Build & flash** | `build_and_flash` · `compile_firmware` · `flash_firmware` · `verify_flash` · `reset_device` |
+| **Build & flash** | `build_and_flash` · `compile_firmware` · `estimate_compile_time` · `flash_firmware` · `verify_flash` · `reset_device` |
 | **Follow the job** | `get_flash_job` · `cancel_flash_job` · `get_flash_history` |
 | **Builds** | `list_builds` · `flash_build` · `delete_build` |
 | **Read the board** | `read_serial` · `capture_boot_log` |
