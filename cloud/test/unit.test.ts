@@ -170,3 +170,25 @@ describe("build cache key", () => {
     expect(buildIdFor(k)).toMatch(/^bld_[0-9a-f]{12}$/);
   });
 });
+
+import { estimateCompile, FAST_TIMEOUT_S, SLOW_TIMEOUT_S } from "../src/compile/backend";
+describe("estimateCompile", () => {
+  it("plain Uno sketch is fast with the 2 min limit", () => {
+    const e = estimateCompile({ board: "arduino-uno", sketch: "void setup(){}void loop(){}" });
+    expect(e.seconds).toBeLessThan(10);
+    expect(e.timeout_seconds).toBe(FAST_TIMEOUT_S);
+  });
+  it("NimBLE on ESP32 is slow with the 3 min limit (listed or only #included)", () => {
+    const a = estimateCompile({ board: "esp32-wroom-32", sketch: "", libraries: ["NimBLE-Arduino@1.3.7"] });
+    const b = estimateCompile({ board: "esp32-wroom-32", sketch: '#include <NimBLEDevice.h>\nvoid setup(){}' });
+    for (const e of [a, b]) {
+      expect(e.seconds).toBeGreaterThanOrEqual(100);
+      expect(e.slow).toBe(true);
+      expect(e.timeout_seconds).toBe(SLOW_TIMEOUT_S);
+    }
+  });
+  it("a couple of small libraries stay under the slow threshold", () => {
+    const e = estimateCompile({ board: "esp32-wroom-32", sketch: "", libraries: ["DHT sensor library", "Adafruit NeoPixel"] });
+    expect(e.slow).toBe(false);
+  });
+});

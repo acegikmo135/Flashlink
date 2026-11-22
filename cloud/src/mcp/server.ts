@@ -8,7 +8,7 @@ import { ManifestInputSchema, validateManifest } from "../jobs/manifest";
 import { isTerminal, type AgentRecord, type DeviceRecord, type Job } from "../jobs/types";
 import { rateLimit } from "../lib/ratelimit";
 import { hubOf } from "../lib/hub";
-import { COMPILE_BOARDS, compileSketch, LIBRARY_NAME, type SourceFile } from "../compile/backend";
+import { COMPILE_BOARDS, compileSketch, estimateCompile, LIBRARY_NAME, type SourceFile } from "../compile/backend";
 import { ESP32_BOOT } from "../compile/esp32-boot";
 import { findBuild, markFlashed, parseJson, recordBuild, type BuildRow } from "../compile/builds";
 import { sha256Hex } from "../lib/crypto";
@@ -487,7 +487,7 @@ export function buildServer(ctx: McpContext): McpServer {
     await Promise.race([upload, new Promise((res) => setTimeout(res, 15_000))]);
     const job = (await hub().getJob(jobId)) ?? created.job;
     return ok({
-      build: { ...cacheInfo(rec), board: a.board, size_bytes: r.bytes.length, sha256: sha, stats: r.stats, device_id: sel.device.id, port: sel.device.port, files: files.map((f) => ({ filename: f.filename, address: f.address, size: f.size })), full_image: board.kind === "esp32" ? full : null },
+      build: { ...cacheInfo(rec), build_time: r.time, board: a.board, size_bytes: r.bytes.length, sha256: sha, stats: r.stats, device_id: sel.device.id, port: sel.device.port, files: files.map((f) => ({ filename: f.filename, address: f.address, size: f.size })), full_image: board.kind === "esp32" ? full : null },
       job: publicJob(job),
       note: `${PRIVACY} NOT flashed yet: poll get_flash_job('${jobId}', wait_seconds=20) until is_terminal and check flash_confirmed.`,
     });
@@ -495,13 +495,30 @@ export function buildServer(ctx: McpContext): McpServer {
   const PRIVACY = "Source is compiled by the cloud build service (default: Wokwi's public Arduino build server); firmware binaries are never stored by MCU Bridge. The build is recorded in your build history (hashes, sizes, and your source text so it can be re-flashed with flash_build).";
 
   server.registerTool(
+    "estimate_compile_time",
+    {
+      title: "Estimate how long a cloud build will take",
+      description:
+        "Rough estimate (±50 %) of how long compile_firmware / build_and_flash will take for this sketch, board and libraries — call it BEFORE building when you use big libraries (NimBLE, LVGL, async web servers…). Plain Uno/Nano sketches take about 3 s; ESP32 sketches 30 s+; NimBLE on ESP32 about 2 minutes. Builds estimated at 75 s or more get a 3-minute limit, others 2 minutes. Warn the user before a long build and do not retry in a loop while one is running. Does not build anything.",
+      inputSchema: strict({ board: BoardEnum, sketch: z.string().max(200_000).optional(), libraries: sourceShape.libraries, extra_files: sourceShape.extra_files }),
+      outputSchema: { ok: z.boolean(), estimated_seconds: z.number(), timeout_seconds: z.number(), slow: z.boolean(), basis: z.string(), note: z.string() },
+      annotations: { title: "Estimate how long a cloud build will take", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    (a) =>
+      guard(async () => {
+        const e = estimateCompile({ board: a.board, sketch: a.sketch ?? "", files: a.extra_files, libraries: a.libraries });
+        return ok({ estimated_seconds: e.seconds, timeout_seconds: e.timeout_seconds, slow: e.slow, basis: e.basis, note: "Approximate (±50 %). The build is cut off after timeout_seconds." });
+      }),
+  );
+
+  server.registerTool(
     "compile_firmware",
     {
       title: "Compile an Arduino sketch in the cloud",
       description:
-        "Compile an Arduino sketch to firmware WITHOUT needing a code sandbox or any local toolchain. Returns build statistics, the SHA-256 and — for AVR boards — the Intel HEX text. Compile errors come back as compiler output in `error.details.stderr` so you can fix the code and retry. This does not touch any board; use build_and_flash to compile AND flash. Supports Arduino Uno/Nano/Mega and ESP32, with third-party libraries from the Arduino Library Manager (`libraries`).",
+        "Compile an Arduino sketch to firmware WITHOUT needing a code sandbox or any local toolchain. Returns build statistics, the SHA-256 and — for AVR boards — the Intel HEX text. Compile errors come back as compiler output in `error.details.stderr` so you can fix the code and retry. This does not touch any board; use build_and_flash to compile AND flash. Supports Arduino Uno/Nano/Mega and ESP32, with third-party libraries from the Arduino Library Manager (`libraries`). Big libraries are slow (NimBLE ≈ 2 min): call estimate_compile_time first, tell the user, and do not retry in a loop; the result's `build_time` shows estimate vs. actual.",
       inputSchema: strict(sourceShape),
-      outputSchema: { ok: z.boolean(), build_id: z.string().nullable(), seen_before: z.boolean(), previous_builds: z.number(), output_changed_since_last_build: z.boolean(), board: z.string(), format: z.string(), size_bytes: z.number(), sha256: z.string(), stats: z.record(z.any()), intel_hex: z.string().nullable(), note: z.string() },
+      outputSchema: { ok: z.boolean(), build_id: z.string().nullable(), seen_before: z.boolean(), previous_builds: z.number(), output_changed_since_last_build: z.boolean(), board: z.string(), format: z.string(), size_bytes: z.number(), sha256: z.string(), build_time: z.record(z.any()), stats: z.record(z.any()), intel_hex: z.string().nullable(), note: z.string() },
       annotations: { title: "Compile an Arduino sketch in the cloud", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     (a) =>
@@ -515,6 +532,7 @@ export function buildServer(ctx: McpContext): McpServer {
           format: r.kind === "ihex" ? "Intel HEX" : "ESP32 application image (.bin)",
           size_bytes: r.bytes.length,
           sha256: await sha256Hex(r.bytes),
+          build_time: r.time,
           stats: r.stats,
           intel_hex: r.text && r.text.length <= 40_000 ? r.text : null,
           note: `${PRIVACY} To put this on the board call build_and_flash.`,
