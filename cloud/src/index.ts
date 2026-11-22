@@ -76,6 +76,7 @@ export default {
         headers.set("x-agent-id", auth.agent_id);
         headers.set("x-user-id", auth.user_id);
         headers.set("x-agent-name", auth.name);
+        headers.set("x-agent-origin", url.origin); // the address this desktop app trusts for downloads
         return env.USER_HUB.get(env.USER_HUB.idFromName(auth.user_id)).fetch(new Request("https://hub/ws", { headers }));
       }
       if (path.startsWith("/api/agent/") && path !== "/api/agent/ws" && path !== "/api/agent/me" && path !== "/api/agent/revoke") {

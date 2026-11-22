@@ -141,6 +141,7 @@ export class UserHub extends DurableObject<Env> {
     const agentId = request.headers.get("x-agent-id");
     const userId = request.headers.get("x-user-id");
     const name = request.headers.get("x-agent-name") ?? "Desktop";
+    const origin = request.headers.get("x-agent-origin");
     if (!agentId || !userId) return new Response("unauthorized", { status: 401 });
 
     if (!this.state.user_id) this.state.user_id = userId;
@@ -154,6 +155,7 @@ export class UserHub extends DurableObject<Env> {
     }
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
+    if (origin && /^https?:\/\/[^/\s]+$/.test(origin)) await this.ctx.storage.put(`agent_origin:${agentId}`, origin);
     this.ctx.acceptWebSocket(server, [`agent:${agentId}`]);
     const att: Attachment = { agentId, connectedAt: Date.now() };
     server.serializeAttachment(att);
@@ -416,7 +418,9 @@ export class UserHub extends DurableObject<Env> {
     const files = job.manifest.files.map((f) => ({ size: f.size, sha256: f.sha256 }));
     const expMs = job.expires_at;
     const dl = await signToken(this.env.JOB_SIGNING_KEY, { t: "dl", uid: job.user_id, jid: job.id, aid: job.agent_id, exp: expMs, files });
-    const base = baseUrl ?? (await this.ctx.storage.get<string>("base_url")) ?? "";
+    // The desktop app only downloads from the server address it connected to, so use that — not whatever address the
+    // MCP/API request happened to arrive on (custom domain vs workers.dev).
+    const base = (await this.ctx.storage.get<string>(`agent_origin:${job.agent_id}`)) ?? baseUrl ?? (await this.ctx.storage.get<string>("base_url")) ?? "";
     this.send(job.agent_id, {
       type: "job.new",
       job_id: job.id,
