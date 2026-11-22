@@ -192,3 +192,38 @@ describe("estimateCompile", () => {
     expect(e.slow).toBe(false);
   });
 });
+
+import { cacheDays, cacheDelete, cacheEnabled, cacheGet, cachePut } from "../src/compile/fwcache";
+describe("firmware cache", () => {
+  const fakeKv = () => {
+    const m = new Map<string, { v: ArrayBuffer; meta: unknown }>();
+    return {
+      m,
+      kv: {
+        put: async (k: string, v: Uint8Array, o: { metadata: unknown }) => void m.set(k, { v: v.slice().buffer, meta: o.metadata }),
+        getWithMetadata: async (k: string) => ({ value: m.get(k)?.v ?? null, metadata: m.get(k)?.meta ?? null }),
+        delete: async (k: string) => void m.delete(k),
+      },
+    };
+  };
+  const ok = (bytes: Uint8Array) => ({ ok: true as const, time: { estimated_seconds: 120, took_seconds: 110, timeout_seconds: 180, basis: "x" }, kind: "bin" as const, bytes, text: null, stats: { program_bytes: 1, program_percent: 2, program_max: 3, ram_bytes: 4 }, stdout: "", esp: { mode: "dio", frequency: "40m", flash_size: "4MB" } });
+  it("is off without the binding or with DAYS=0, 7 days by default", () => {
+    expect(cacheEnabled({} as never)).toBe(false);
+    expect(cacheEnabled({ FIRMWARE_CACHE: {} } as never)).toBe(true);
+    expect(cacheEnabled({ FIRMWARE_CACHE: {}, FIRMWARE_CACHE_DAYS: "0" } as never)).toBe(false);
+    expect(cacheDays({} as never)).toBe(7);
+  });
+  it("round-trips bytes + metadata per account and can be deleted", async () => {
+    const { kv, m } = fakeKv();
+    const env = { FIRMWARE_CACHE: kv } as never;
+    const fw = new Uint8Array([1, 2, 3, 250]);
+    await cachePut(env, "u1", "k", ok(fw));
+    const hit = await cacheGet(env, "u1", "k");
+    expect(hit && Array.from(hit.bytes)).toEqual([1, 2, 3, 250]);
+    expect(hit?.time.cached).toBe(true);
+    expect(hit?.esp?.flash_size).toBe("4MB");
+    expect(await cacheGet(env, "u2", "k")).toBeNull(); // another account never sees it
+    await cacheDelete(env, "u1", "k");
+    expect(m.size).toBe(0);
+  });
+});

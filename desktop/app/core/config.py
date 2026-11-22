@@ -73,6 +73,8 @@ class Settings:
     device_allow: dict = field(default_factory=dict)  # device_id -> bool override
     theme: str = "auto"  # "light" | "dark" | "auto" (follow Windows)
     simulate: bool = False
+    # How many of the most recently flashed firmware versions are kept on this PC (0 = keep nothing).
+    keep_firmware: int = 5
 
 
 class SettingsStore:

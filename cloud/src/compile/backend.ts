@@ -41,7 +41,7 @@ export interface BuildStats {
 }
 
 export type CompileResult =
-  | { ok: true; time: { estimated_seconds: number; took_seconds: number; timeout_seconds: number; basis: string }; kind: "ihex" | "bin"; bytes: Uint8Array; text: string | null; stats: BuildStats; stdout: string; esp?: { mode: string; frequency: string; flash_size: string } }
+  | { ok: true; time: { estimated_seconds: number; took_seconds: number; timeout_seconds: number; basis: string; cached?: boolean; cached_at?: string }; kind: "ihex" | "bin"; bytes: Uint8Array; text: string | null; stats: BuildStats; stdout: string; esp?: { mode: string; frequency: string; flash_size: string } }
   | { ok: false; code: "COMPILE_FAILED" | "COMPILER_UNAVAILABLE"; message: string; stderr?: string; stdout?: string };
 
 export function parseStats(stdout: string): BuildStats {

@@ -8,6 +8,7 @@ import { ManifestInputSchema, validateManifest } from "../jobs/manifest";
 import { isTerminal, type AgentRecord, type DeviceRecord, type Job } from "../jobs/types";
 import { rateLimit } from "../lib/ratelimit";
 import { hubOf } from "../lib/hub";
+import { cacheDelete, cacheGet, cacheKeyFor, cachePut } from "../compile/fwcache";
 import { COMPILE_BOARDS, compileSketch, estimateCompile, LIBRARY_NAME, type SourceFile } from "../compile/backend";
 import { ESP32_BOOT } from "../compile/esp32-boot";
 import { findBuild, markFlashed, parseJson, recordBuild, type BuildRow } from "../compile/builds";
@@ -100,6 +101,7 @@ export function buildServer(ctx: McpContext): McpServer {
         "BOARD → FLASH TOOL (used by the desktop app): Arduino Uno/Nano/Mega and other AVR → avrdude (never esptool). ESP32/ESP32-S2/S3/C3/ESP8266 → esptool. STM32 → STM32CubeProgrammer/OpenOCD (ST-Link). CH32V003 → wlink (WCH-LinkE). Read `family`, `chip` and `missing` from list_devices/get_device_info. Users can name their boards (`name` in list_devices; rename_device sets it): always refer to a board by that name, and accept it anywhere device_id is expected; a missing tool is reported per device with its name, and the user can install it from the Tools page of the desktop app.\n" +
         "NO CODE SANDBOX? Use build_and_flash: send the Arduino sketch source and board id; the cloud compiles it (third-party libraries via `libraries`) and streams it to the PC in one call. ESP32 builds are flashed as a complete image (bootloader + partitions + app), so even a blank chip boots. compile_firmware only compiles. Every build is recorded in a metadata-only history: list_builds shows it and flash_build re-flashes an earlier build_id; delete_build removes one.\n" +
         "BIG LIBRARIES ARE SLOW: call estimate_compile_time (board, libraries) before build_and_flash/compile_firmware when the sketch uses NimBLE, LVGL, async web servers, TFT_eSPI or camera libraries (NimBLE on ESP32 ≈ 2 min). If it says slow, tell the user the approximate time, make ONE build call (limit 2 min, or 3 min for slow builds), never retry in a loop or build in parallel, and read build_time in the result (estimated vs actual). Pin library versions (e.g. NimBLE-Arduino@1.3.7).\n" +
+        "RE-FLASHING IS CHEAP: identical sketch + board + libraries (also flash_build) is served from a per-account firmware cache for ~7 days, so retries and re-flashes skip the compile; build_time.cached says so. Use rebuild=true only when you really need a fresh compile (e.g. an unpinned library changed). The PC also keeps its last 5 flashed versions and skips the download when it already has the file.\n" +
         "Workflow with your own toolchain: list_devices → (identify_mcu) → build firmware → flash_firmware (with a manifest) → upload files with the returned curl commands → get_flash_job(wait_seconds) until is_terminal → capture_boot_log/read_serial. " +
         "Only treat firmware as flashed when get_flash_job reports status 'completed' with flash_confirmed=true. Every failure carries a specific error.code.",
     },
@@ -421,15 +423,24 @@ export function buildServer(ctx: McpContext): McpServer {
       .optional()
       .describe("Additional source/header files of the sketch (e.g. config.h)."),
     title: z.string().min(1).max(80).optional().describe("Optional short label for the build history, e.g. \"blink 500ms\"."),
+    rebuild: z.boolean().optional().describe("Skip the firmware cache and compile again (default false). Identical sketch + board + libraries are normally served from the cache for a few days, so retries and re-flashes are instant."),
     libraries: z
       .array(z.string().regex(LIBRARY_NAME))
       .max(10)
       .optional()
       .describe("Third-party libraries to install from the Arduino Library Manager before compiling, by their Library Manager name, optionally pinned: e.g. [\"Adafruit NeoPixel\", \"DHT sensor library@1.4.6\"]. Arduino built-in libraries (Servo, Wire, SPI, EEPROM, SoftwareSerial, WiFi…) need no entry."),
   };
-  const compileTo = async (a: { sketch: string; board: string; extra_files?: SourceFile[]; libraries?: string[] }) => {
+  const compileTo = async (a: { sketch: string; board: string; extra_files?: SourceFile[]; libraries?: string[]; rebuild?: boolean }) => {
+    // Same inputs as an earlier build of this account (and still cached) → no compile at all.
+    const key = await cacheKeyFor({ board: a.board, sketch: a.sketch, files: a.extra_files ?? [], libraries: a.libraries ?? [] });
+    if (!a.rebuild) {
+      const hit = await cacheGet(env, userId, key);
+      if (hit) return hit;
+    }
     if (!(await rateLimit(env, `compile:${ctx.tokenId}`, Number(env.COMPILE_LIMIT) || 30, 3600))) return { ok: false as const, code: "RATE_LIMITED" as const, message: "Build limit reached (30 per hour)." };
-    return compileSketch(env, { board: a.board, sketch: a.sketch, files: a.extra_files ?? [], libraries: a.libraries });
+    const r = await compileSketch(env, { board: a.board, sketch: a.sketch, files: a.extra_files ?? [], libraries: a.libraries });
+    if (r.ok) ctx.waitUntil(cachePut(env, userId, key, r));
+    return r;
   };
   type Compiled = Extract<Awaited<ReturnType<typeof compileTo>>, { ok: true }>;
   type Rec = { id: string; previous: BuildRow | null; output_changed: boolean; sha: string };
@@ -493,7 +504,7 @@ export function buildServer(ctx: McpContext): McpServer {
       note: `${PRIVACY} NOT flashed yet: poll get_flash_job('${jobId}', wait_seconds=20) until is_terminal and check flash_confirmed.`,
     });
   };
-  const PRIVACY = "Source is compiled by the cloud build service (default: Wokwi's public Arduino build server); firmware binaries are never stored by MCU Bridge. The build is recorded in your build history (hashes, sizes, and your source text so it can be re-flashed with flash_build).";
+  const PRIVACY = "Source is compiled by the cloud build service (default: Wokwi's public Arduino build server); MCU Bridge relays firmware to your PC through an in-memory stream; a successful build is also kept in a per-account cache for a few days (default 7, FIRMWARE_CACHE_DAYS) so that identical requests and re-flashes skip the compile (build_time.cached=true; pass rebuild=true to force a fresh compile; delete_build clears it). The build is recorded in your build history (hashes, sizes, and your source text so it can be re-flashed with flash_build).";
 
   server.registerTool(
     "estimate_compile_time",
@@ -574,7 +585,7 @@ export function buildServer(ctx: McpContext): McpServer {
     "list_builds",
     {
       title: "Build history",
-      description: "Your recent cloud builds (newest first): board, size, SHA-256, libraries, how often each was built and flashed, and the last flash job. Metadata only — firmware binaries are never stored. Use a build_id with flash_build to put a previous build on a board again.",
+      description: "Your recent cloud builds (newest first): board, size, SHA-256, libraries, how often each was built and flashed, and the last flash job. Metadata only (the compiled firmware itself sits in a short-lived cache, see build_time.cached). Use a build_id with flash_build to put a previous build on a board again.",
       inputSchema: strict({ board: BoardEnum.optional(), limit: z.number().int().min(1).max(40).optional().describe("Max rows (default 10).") }),
       outputSchema: { ok: z.boolean(), count: z.number(), builds: z.array(z.record(z.any())) },
       annotations: { title: "Build history", ...readOnly },
@@ -612,7 +623,7 @@ export function buildServer(ctx: McpContext): McpServer {
     {
       title: "Re-flash a previous build",
       description:
-        "Flash a build from list_builds again — e.g. to restore a known-good firmware or flash a second board. MCU Bridge never stores firmware binaries, so the build is recompiled from its recorded source and the result is checked against the recorded SHA-256: if the output differs (an unpinned library updated, the compiler changed) the flash is REFUSED with BUILD_CHANGED unless allow_changed=true. Pin library versions (\"Name@1.2.3\") to make rebuilds reproducible. Returns immediately like build_and_flash; poll get_flash_job.",
+        "Flash a build from list_builds again — e.g. to restore a known-good firmware or flash a second board. Compiled firmware is cached for a few days, so within that window this is instant with no compile; after that the build is recompiled from its recorded source. Either way the result is checked against the recorded SHA-256: if the output differs (an unpinned library updated, the compiler changed) the flash is REFUSED with BUILD_CHANGED unless allow_changed=true. Pin library versions (\"Name@1.2.3\") to make rebuilds reproducible. Returns immediately like build_and_flash; poll get_flash_job.",
       inputSchema: strict({
         build_id: z.string().regex(/^bld_[0-9a-f]{12}$/),
         allow_changed: z.boolean().optional().describe("Flash even if the rebuilt output differs from the recorded hash (default false)."),
@@ -655,6 +666,8 @@ export function buildServer(ctx: McpContext): McpServer {
     },
     ({ build_id }) =>
       guard(async () => {
+        const row = await findBuild(env.DB, userId, build_id);
+        if (row) await cacheDelete(env, userId, row.cache_key);
         const r = await env.DB.prepare("DELETE FROM builds WHERE user_id = ?1 AND id = ?2").bind(userId, build_id).run();
         return ok({ deleted: (r.meta.changes ?? 0) > 0 });
       }),
@@ -683,7 +696,7 @@ export function buildServer(ctx: McpContext): McpServer {
     "get_flash_history",
     {
       title: "Flash history",
-      description: "Past flash/verify jobs for this account, newest first, with outcome and error codes. Metadata only; firmware binaries are never retained.",
+      description: "Past flash/verify jobs for this account, newest first, with outcome and error codes. Metadata only.",
       inputSchema: strict({ device_id: DeviceIdParam, limit: z.number().int().min(1).max(50).optional().describe("Max rows (default 10)."), status: z.enum(["completed", "failed", "verification_failed", "cancelled", "expired"]).optional() }),
       outputSchema: { ok: z.boolean(), count: z.number(), jobs: z.array(z.record(z.any())) },
       annotations: { title: "Flash history", ...readOnly },
@@ -727,7 +740,7 @@ export function buildServer(ctx: McpContext): McpServer {
             "ESP: address must be 4096-aligned; typical ESP32 layout is bootloader 0x1000, partitions 0x8000, app 0x10000 (ESP32-S3/C3: bootloader 0x0). Never guess — take addresses from your build output (flasher_args.json).",
             "AVR: one Intel HEX (or raw bin) file at address 0x0. No bootloader/fuse changes are performed.",
             "STM32 and CH32V003 require an ST-Link / WCH-LinkE programmer; a plain USB-UART adapter cannot program them.",
-            "Firmware is never stored: it is streamed from your upload to the desktop app and deleted after flashing.",
+            "Firmware is streamed from your upload to the desktop app through an in-memory relay; the desktop app keeps its last 5 flashed versions on the PC, and cloud-compiled builds are cached per account for a few days.",
           ],
         }),
       ),

@@ -11,7 +11,7 @@ export function ActivityPage() {
   if (!data) return <Skeleton className="h-96" />
   return (
     <>
-      <PageHeader title="Activity" description="Every flash and verification requested through MCP. Firmware is never stored — only this metadata." />
+      <PageHeader title="Activity" description="Every flash and verification requested through MCP. Only this metadata is listed here." />
       <Card className="ios-rise" style={{ "--i": 0 } as React.CSSProperties}>
         <CardContent>
           {data.jobs.length === 0 ? (

@@ -111,3 +111,16 @@ cd desktop && pip install -r requirements.txt
 python run.py --simulate --headless --server http://127.0.0.1:8787   # agent with virtual boards
 pytest tests                    # desktop unit + UI smoke + (from repo root) end-to-end
 ```
+
+## Firmware cache (fast re-flash)
+
+Cloud compiles of big libraries (NimBLE ≈ 2 min) are slow, so a successful build is cached per account and reused for identical requests and `flash_build`:
+
+```bash
+cd cloud
+npx wrangler kv namespace create FIRMWARE_CACHE        # copy the id into wrangler.toml / wrangler.owner.toml (see the commented block)
+```
+
+* Kept for `FIRMWARE_CACHE_DAYS` days (default 7; `0` turns the cache off). No binding = no cache; nothing else changes.
+* Key = hash of board + sketch + extra files + pinned libraries, scoped to the account. Results report `build_time.cached`; `rebuild: true` forces a fresh compile; `delete_build` removes the cached firmware.
+* The desktop app additionally keeps the **last 5 flashed firmware versions** on the PC (`%APPDATA%\MCU Bridge\firmware`, setting `keep_firmware`, `0` = none) and skips the download when it already has a file (each file is re-hashed first).

@@ -32,7 +32,7 @@ the right flasher and hoping it works.
 | | |
 |---|---|
 | ☁️ **Compiles in the cloud** | Arduino sketches, **third-party libraries** included. Your PC never compiles. |
-| 🔌 **Streams straight to your PC** | Firmware travels through an in-memory relay. It is **never stored** in the cloud. |
+| 🔌 **Streams straight to your PC** | Firmware travels through an in-memory relay to your PC. Builds are cached for a few days (per account, optional) so re-flashing is instant, and the app keeps the last 5 flashed versions. |
 | ✅ **Verified, not assumed** | A flash only counts as done when the desktop app confirms it (read-back + SHA-256). |
 | 🧰 **The right tool per board** | avrdude for Arduino/AVR, esptool for ESP32/ESP8266 — chosen automatically. |
 | 🆔 **Auto-detects your board** | Tells Uno, Nano, old-bootloader Nano and Mega apart by trying each speed. |
@@ -63,7 +63,7 @@ the right flasher and hoping it works.
 flowchart LR
     AI["🤖 Your AI chat<br/>Claude · ChatGPT · Gemini"] -- "MCP (OAuth)" --> W["☁️ Cloudflare Worker<br/>Durable Objects + D1"]
     W -- "compile" --> B["Cloud build service"]
-    W == "firmware stream<br/>in memory, never stored" ==> PC["🖥️ MCU Bridge<br/>Windows app"]
+    W == "firmware stream<br/>in memory relay" ==> PC["🖥️ MCU Bridge<br/>Windows app"]
     PC -. "outbound WebSocket" .-> W
     PC -- "USB" --> MCU[("🔧 Your board")]
 ```
@@ -192,7 +192,7 @@ Details and limits: [docs/supported-boards.md](docs/supported-boards.md). Cloud 
 
 ## Security & privacy
 
-* **Firmware is never stored** in the cloud — it exists only in a small in-memory window while it streams, and is deleted from your PC after the job. The database holds metadata only (hashes, sizes, statuses).
+* **Firmware retention is limited and optional.** It streams through an in-memory relay. Compiled builds are cached in Cloudflare KV for 7 days per account so identical builds and re-flashes skip the compile (`FIRMWARE_CACHE_DAYS=0` or no KV binding turns it off; `delete_build` clears an entry). The desktop app keeps its last 5 flashed versions in its data folder (setting `keep_firmware`, `0` = none). The database holds metadata only (hashes, sizes, statuses).
 * Your AI can ask the PC to do **only** a short list of things: identify, flash, verify, reset, read serial. There is **no** shell, file or process access.
 * Sign-in is invite-gated; the desktop app pairs with a short-lived code, and its credential is revocable and stored with Windows DPAPI.
 * MCP uses **OAuth 2.1 with PKCE** (or revocable tokens). Every job is bound to a signed, expiring token; size and SHA-256 are enforced in the cloud *and* again on your PC.

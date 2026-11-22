@@ -16,6 +16,10 @@ export interface Env {
   /** Optional override of the per-IP pairing-start limit per hour (default 15; raised in tests). */
   PAIR_START_LIMIT?: string;
   COMPILE_LIMIT?: string;
+  /** Optional KV namespace that caches compiled firmware per account (see src/compile/fwcache.ts). */
+  FIRMWARE_CACHE?: KVNamespace;
+  /** Days a cached build is kept (default 7; "0" turns the cache off). */
+  FIRMWARE_CACHE_DAYS?: string;
   /** Invite code required to create an account (wrangler secret). */
   SIGNUP_CODE: string;
   /** The owner: the signed-in account with this email gets the admin dashboard and receives invite-request mail. */

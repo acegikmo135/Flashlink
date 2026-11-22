@@ -26,6 +26,7 @@ from websockets.exceptions import ConnectionClosed, InvalidStatus
 from app.core import images
 from app.core.boards import FAMILIES
 from app.core.config import APP_VERSION, SettingsStore, data_dir, tmp_dir
+from app.core.fwcache import FirmwareStore
 from app.core.manifest import FILENAME, Manifest, ManifestError, validate
 from app.hardware import serialio, tools
 from app.hardware.devices import HardwareManager
@@ -86,6 +87,7 @@ class AgentState:
 class Agent:
     def __init__(self, store: SettingsStore, creds: CredentialStore, hw: HardwareManager, on_change=None) -> None:
         self.store, self.creds, self.hw = store, creds, hw
+        self.fw = FirmwareStore(keep=store.settings.keep_firmware)
         self.state = AgentState()
         self.on_change = on_change or (lambda: None)
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -468,6 +470,15 @@ class Agent:
                     file_progress[f.filename] = n
                     update("transferring", "transferring", 100 * (base + n) / total, f"Receiving {f.filename}: {n}/{f.size} bytes", f.filename)
 
+                self.fw.keep = max(0, int(self.store.settings.keep_firmware))
+                stored = self.fw.find(f.sha256, f.size)
+                if stored is not None:  # flashed from this PC before: no download needed (re-hashed above)
+                    shutil.copyfile(stored, p)
+                    done_before += f.size
+                    paths[f.filename] = p
+                    view.log.append(f"{f.filename}: using the copy stored on this PC")
+                    update("transferring", "transferring", 100 * done_before / total, f"{f.filename}: stored copy on this PC, SHA-256 verified", f.filename, force=True)
+                    continue
                 update("transferring", "transferring", 100 * done_before / total, f"Waiting for {f.filename}", f.filename, force=True)
                 download_file(file_urls[f.filename], msg["download_token"], p, f.size, f.sha256, prog, cancel, deadline)
                 done_before += f.size
@@ -501,6 +512,8 @@ class Agent:
                 update("flashing", "boot_log", 100, "Capturing boot log", force=True)
                 result["boot_log"] = self._boot_capture(dev_ref, manifest.family, float(bl))
             view.verified = outcome.verified
+            if msg.get("kind") == "flash" and outcome.verified:
+                self.fw.save(manifest, paths, jid)  # keep the last few firmware versions on this PC
             update("verifying" if outcome.verified else "flashing", "done", 100, "Completed", force=True)
             finish("completed", result)
         except ManifestError as e:
@@ -516,7 +529,7 @@ class Agent:
             log.exception("job %s crashed", jid)
             finish("failed", None, FlashError("INTERNAL", f"{type(e).__name__}: {e}"))
         finally:
-            shutil.rmtree(jdir, ignore_errors=True)  # firmware never outlives the job
+            shutil.rmtree(jdir, ignore_errors=True)  # per-job temp copies are removed; the last few flashed versions stay in the firmware store
             if dev_ref:
                 self.hw.busy.pop(dev_ref.id, None)
             self._active.discard(jid)

@@ -27,6 +27,12 @@ INSTALLER_URL = "https://github.com/acegikmo135/Flashlink/releases/download/desk
 # name = "SEND_EMAIL"
 # destination_address = "you@example.com"
 
+# Optional firmware cache (identical builds and re-flashes skip the slow cloud compile; kept FIRMWARE_CACHE_DAYS, default 7):
+#   npx wrangler kv namespace create FIRMWARE_CACHE   → paste the id below and uncomment. Without it the cache is simply off.
+# [[kv_namespaces]]
+# binding = "FIRMWARE_CACHE"
+# id = "<kv-namespace-id>"
+
 [observability]
 enabled = true
 
